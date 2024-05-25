@@ -1,0 +1,74 @@
+---
+title: "Simulation"
+author: "Quinn White"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+
+map_df(1:10000, {
+  
+})
+
+
+n <- 10
+
+baseline <- tibble(
+  l0 = rbinom(n, 1, .5),
+  a0 = rbinom(n, 1, .5))
+
+
+map_df(1:n, ~ {
+   baseline[.x,] %>%
+     mutate(dk = case_when(
+      a0 == 1 & l0 == 1 ~ rbinom(1,1,.12),
+      a0 == 1 & l0 == 0 ~ rbinom(1,1,.05),
+      a0 ==0 & l0 == 1 ~ rbinom(1,1, .1),
+      a0 == 0 & l0 ==0 ~ rbinom(1, 1, .08)
+    ),
+    dk_A_0 = case_when(
+      # consistency 
+      a0 == 0 ~ dk,
+      # if a0 == 1 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+      a0 == 1 & l0 == 1 ~ rbinom(1,1,.1),
+      # if a0 == 1 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+      a0 == 1 & l0 == 0 ~ rbinom(1, 1, .08)),
+    dk_A_1 = case_when(
+      # consistency
+      a0 == 1 ~ dk,
+      # if a0 == 0 and l0 == 1, simulate as if a0 == 1 and l0 ==1
+      a0 == 0 & l0 == 1 ~ rbinom(1,1,.12),
+      # if a0 == 0 and l0 == 0, simulate as if a0 == 1 and l0 ==0
+      a0 == 0 & l0 ==0 ~ rbinom(1,1,.05)
+    ),
+    yk = case_when(
+      # if they have the competing event, cannot have the event of interest
+      dk == 1 ~ 0, 
+      a0 == 1 & l0 == 1 ~ rbinom(1,1,.2),
+      a0 == 1 & l0 == 0 ~ rbinom(1,1,.1),
+      a0 ==0 & l0 == 1 ~ rbinom(1,1,.3),
+      a0 == 0 & l0 ==0 ~ rbinom(1, 1, .25)
+    ),
+    yk_A_0 = case_when(
+       # if they have the competing event, cannot have the event of interest
+      # this remains true when considering a0 == 0
+      dk == 1 ~ 0, 
+      a0 == 0 ~ yk,
+      # simulate as if they had a0 == 0 and l0 == 1
+      a0 == 1 & l0 == 1 ~ rbinom(1,1,.3),
+      # simulate as if they had a0 == 0 and l0 == 1
+      a0 == 1 & l0 == 0 ~ rbinom(1,1, .1)
+    )
+    ) })
+
+
+
+
+```
+
