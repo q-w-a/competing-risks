@@ -50,7 +50,9 @@ theme_c <- function(...){
 
 ```
 
-Let $L_k$ be an indicator for family history of heart disease.  Since this covariate does not change with time, we have $L_0=L_1=\cdots = L_k$. Let $A$ be the treatment assigment (e.g., an ACE inhibitor).
+Let $L_k$ be an indicator for having high blood pressure. Let $A$ be the treatment assigment (e.g., an ACE inhibitor).
+
+ Since this covariate does not change with time, we have $L_0=L_1=\cdots = L_k$. 
 
 
 
@@ -64,7 +66,8 @@ baseline <- tibble(
   l0 = rbinom(n, 1, .5),
   # treatment assigment
   a0 = rbinom(n, 1, .5),
-  time_point = 1)
+  time_point = 1,
+  participant_id = 1:n)
 
 
 A1_L1_P_D <- .12 
@@ -77,6 +80,12 @@ A1_L1_P_Y <- .2
 A1_L0_P_Y <- .1
 A0_L1_P_Y <- .3
 A0_L0_P_Y <- .25
+
+
+##########################
+# FIRST TIME POINT 
+########################## 
+
 
 sim_dat <- map_df(1:n, ~ {
    baseline[.x,] %>%
@@ -156,6 +165,216 @@ sim_dat <- map_df(1:n, ~ {
     )})
 
 
+##################################
+# EFFECT OF L_0 ON L_1
+##################################
+L1_GIVEN_L0_P = .2
+L1_GIVEN_L1_P = .8
+
+
+###############################
+# CENSORING PROBABILITIES
+###############################
+# probability of censoring if L_1 = 0
+C_K1_GIVEN_L1 = .08
+# probability of censoring if L_0 = 0
+C_K1_GIVEN_L0 = .04
+
+
+#################################################
+# PROBABILITIES OF HAVING COMPETING EVENT 
+# UNDER EACH TREATMENT x L1 COMBINATION 
+#################################################
+A1_L1_P_D_K1 <- A1_L1_P_D + .04
+A1_L0_P_D_K1 <- A1_L0_P_D + .02
+A0_L1_P_D_K1 <- A0_L1_P_D + .06
+A0_L0_P_D_K1 <- A0_L0_P_D + .03
+
+
+#################################################
+# PROBABILITIES OF HAVING EVENT OF INTEREST 
+# UNDER EACH TREATMENT x L1 COMBINATION 
+#################################################
+A1_L1_P_Y_K1 <- A1_L1_P_Y + .035
+A1_L0_P_Y_K1 <- A1_L0_P_Y + .025
+A0_L1_P_Y_K1 <- A0_L1_P_Y + .055
+A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
+
+
+
+################################
+# ADD TIME POINT Y_{K+1}
+################################
+ sim_dat_updated <- map_df(1:2, ~{
+   
+   sim_dat[.x,] %>%
+     mutate(l1 = case_when(
+       # set to previous value if had either event of interest or competing event
+       dk == 1 | yk == 1 ~ l0,
+       l0 == 0 ~ rbinom(1,1, L1_GIVEN_L0_P),
+       l0 == 1 ~  rbinom(1,1, L1_GIVEN_L1_P)
+       ),
+       
+      c_k1 = case_when(
+        # if we observed either event previously, they are not censored
+        dk == 1 | yk == 1 ~ 0,
+        l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L1),
+        l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L0)
+        ),
+      d_k1 = case_when(
+        yk == 1 ~ 0,
+        dk == 1 ~ 1,
+        c_k1 == 1 ~ NA,
+        a0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
+        a0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L0_P_D_K1),
+        a0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L1_P_D_K1),
+        a0 == 0 & l1 ==0 ~ rbinom(1, 1, A0_L0_P_D_K1)
+      ),
+      
+  
+    ###########################
+    # OBSERVED COMPETING EVENT
+    ###########################
+     d_k1 = case_when(
+        yk == 1 ~ 0,
+        dk == 1 ~ 1,
+        c_k1 == 1 ~ NA,
+        a0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
+        a0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L0_P_D_K1),
+        a0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L1_P_D_K1),
+        a0 == 0 & l1 ==0 ~ rbinom(1, 1, A0_L0_P_D_K1)
+      ),
+    
+    ##############################################
+    # COUNTERFACTUALS FOR COMPETING EVENT
+    ##############################################
+    # useful if we want to calculate effect of treatment on competing event
+    
+    # counterfactual under yk = 0, dk = 0, c_{k+1}=0, A=0 (needed for direct effect )
+    d_k1_Y0_D0_C0_A_0 = case_when(
+      # consistency 
+      yk ==0 & dk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+      # otherwise, have to generate new d_k1 
+      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_D_K1),
+      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_D_K1),
+      ),
+    
+    # counterfactual under yk = 0, dk = 0, ck=0, A=1 (needed for direct effect )
+    d_k1_Y0_D0_C0_A_1 = case_when(
+      # consistency 
+      yk ==0 & dk == 0 & a0 == 1 & c_k1 == 0 ~ d_k1,
+      # otherwise, have to generate new d_k1 
+      # if a0 == 1 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1, 1, A1_L1_P_D_K1),
+      # if a0 == 1 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_D_K1)
+      ),
+    
+    # counterfactual under yk = 0, ck=0, a=0 (needed for total effect )
+    d_k1_Y0_C0_A_0 = case_when(
+      # set competing event to 1 if they had a previous event
+      dk == 1 ~ 1,
+      # consistency 
+      yk ==0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+      # otherwise, need to generate new outcome 
+      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_D_K1),
+      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_D_K1),
+      ),
+    
+    # counterfactual under yk=0, ck=0, a= 1 (needed for total effect )
+    d_k1_Y0_C0_A_1 = case_when(
+      # set competing event to 1 if they had a previous event
+      dk == 1 ~ 1,
+      # consistency 
+      yk ==0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+      # otherwise, need to generate new outcome 
+      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
+      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_D_K1)
+      ),
+    
+    
+    ##################################
+    # OBSERVED EVENT OF INTEREST
+    ##################################
+     y_k1 = case_when(
+        yk == 1 ~ 1,
+        dk == 1 ~ 0,
+        c_k1 == 1 ~ NA,
+        a0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_P_Y_K1),
+        a0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L0_P_Y_K1),
+        a0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L1_P_Y_K1),
+        a0 == 0 & l1 ==0 ~ rbinom(1, 1, A0_L0_P_Y_K1)
+      ),
+    
+    
+    ##############################################
+    # COUNTERFACTUALS FOR EVENT OF INTEREST 
+    ##############################################
+
+    # counterfactual under yk = 0, d_{k+1} = 0, c_{k+1}=0, A=0 (needed for direct effect)
+    y_k1_Y0_D0_C0_A_0 = case_when(
+      # consistency 
+      yk ==0 & d_k1 == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
+      # otherwise, have to generate new y_k1 
+      # if a0 == 1 or 0 and l1 == 1, simulate as if a0 == 0 and l1 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_Y_K1),
+      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l1 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_Y_K1),
+      ),
+    
+    # counterfactual under y_{k} = 0, d_{k+1} = 0, c_{k+1}=0, A=1 (needed for direct effect)
+    y_k1_Y0_D0_C0_A_1 = case_when(
+      # consistency 
+      yk ==0 & d_k1 == 0 & a0 == 1 & c_k1 == 0 ~ y_k1,
+      # otherwise, have to generate new y_k1 
+      # if a0 == 1 and l1 == 1, simulate as if a0 == 0 and l1 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1, 1, A1_L1_P_Y_K1),
+      # if a0 == 1 and l1 == 0, simulate as if a0 == 0 and l1 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_Y_K1)
+      ),
+    
+    # counterfactual under y_{k} = 0, c_{k+1}=0, A=0 (needed for total effect )
+    y_k1_Y0_C0_A_0 = case_when(
+      # set competing event to 1 if they had a previous event
+      yk == 1 ~ 1,
+      # we are not eliminating possbility of past competing event
+      dk == 1 ~ 0, 
+      # consistency 
+      yk ==0 & a0 == 0 & c_k1 == 0 ~ y_k1,
+      # otherwise, need to generate new outcome 
+      # if a0 == 1 or 0 and l1 == 0, simulate as if a0 == 0 and l1== 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_D_K1),
+      # if a0 == 1 or 0 and l1 == 1, simulate as if a0 == 0 and l1 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_D_K1),
+      ),
+
+    # counterfactual under y_{k} = 0, c_{k+1}=0, A=1 (needed for total effect)
+    y_k1_Y0_C0_A_1 = case_when(
+      # set competing event to 1 if they had a previous event
+      yk == 1 ~ 1,
+      # we are not eliminating possibility of past competing event
+      dk == 1 ~ 0, 
+      # consistency 
+      yk ==0 & a0 == 1 & c_k1 == 0 ~ y_k1,
+      # otherwise, need to generate new outcome 
+      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_D_K1),
+      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
+      )
+     )
+ })
+ 
+ 
+ 
+        
+        
 
 
 label_a <- function(string, prefix = "A=") paste0(prefix, string)
