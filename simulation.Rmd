@@ -70,7 +70,9 @@ Direct effect:
 
 Total effect:
 
-
+\begin{align*}
+\text{Total effect} &= \Pr[Y_{k+1}^{a=1} =1] - \Pr[Y_{k+1}^{a=0} = 1]
+\end{align*}
 
 
 ```{r}
@@ -97,6 +99,16 @@ A1_L1_P_Y <- .2
 A1_L0_P_Y <- .1
 A0_L1_P_Y <- .3
 A0_L0_P_Y <- .25
+
+
+# for k = 0, l0=1
+0.2 * 1* (1-0.12) * 0.5 
+# for k = 0, l0=0
+0.1 * 1 *(1-.1) * .5 
+
+# for k=1
+
+
 
 
 ##########################
@@ -200,22 +212,36 @@ C_K1_GIVEN_L0 = .04
 
 #################################################
 # PROBABILITIES OF HAVING COMPETING EVENT 
-# UNDER EACH TREATMENT x L1 COMBINATION 
+# UNDER EACH TREATMENT x L1 x L0 COMBINATION 
 #################################################
-A1_L1_P_D_K1 <- A1_L1_P_D + .04
-A1_L0_P_D_K1 <- A1_L0_P_D + .02
-A0_L1_P_D_K1 <- A0_L1_P_D + .06
-A0_L0_P_D_K1 <- A0_L0_P_D + .03
+# first L is L_0, next is L_1
+# e.g. L1_L0 indicates L_0=1, L_1=0
+A1_L1_L0_P_D_K1 <- A1_L1_P_D + .04
+A1_L0_L0_P_D_K1 <- A1_L0_P_D + .02
+A1_L0_L1_P_D_K1 <- A0_L1_P_D + .06
+A1_L1_L1_P_D_K1 <- A0_L0_P_D + .03
+
+A0_L1_L0_P_D_K1 <- A1_L1_P_D + .02
+A0_L0_L0_P_D_K1 <- A1_L0_P_D + .01
+A0_L0_L1_P_D_K1 <- A0_L1_P_D + .03
+A0_L1_L1_P_D_K1 <- A0_L0_P_D + .05
 
 
-#################################################
+#########################################################
 # PROBABILITIES OF HAVING EVENT OF INTEREST 
-# UNDER EACH TREATMENT x L1 COMBINATION 
-#################################################
-A1_L1_P_Y_K1 <- A1_L1_P_Y + .035
-A1_L0_P_Y_K1 <- A1_L0_P_Y + .025
-A0_L1_P_Y_K1 <- A0_L1_P_Y + .055
-A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
+# UNDER EACH TREATMENT x L1 x L0 COMBINATION x L0 
+#########################################################
+# first L is L_0, next is L_1
+# e.g. L1_L0 indicates L_0=1, L_1=0
+A1_L1_L0_P_Y_K1 <- A1_L1_P_Y + .06
+A1_L0_L0_P_Y_K1 <- A1_L0_P_Y + .03
+A1_L0_L1_P_Y_K1 <- A0_L0_P_Y + .1
+A1_L1_L1_P_Y_K1 <- A0_L1_P_Y + .2
+
+A0_L1_L0_P_Y_K1 <- A1_L1_P_Y + .08
+A0_L0_L0_P_Y_K1 <- A1_L0_P_Y + .03
+A0_L0_L1_P_Y_K1 <- A0_L0_P_Y + .05
+A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .1
 
 
 
@@ -238,30 +264,26 @@ A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
         l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L1),
         l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L0)
         ),
+      ############################
+      # OBSERVED COMPETING EVENT
+      ############################
       d_k1 = case_when(
         yk == 1 ~ 0,
         dk == 1 ~ 1,
         c_k1 == 1 ~ NA,
-        a0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
-        a0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L0_P_D_K1),
-        a0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L1_P_D_K1),
-        a0 == 0 & l1 ==0 ~ rbinom(1, 1, A0_L0_P_D_K1)
-      ),
+        
+        # each combination of treatment x l1 x l0 
+        a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1,  A1_L1_L0_P_D_K1),
+        a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1,  A1_L0_L0_P_D_K1),
+        a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1,  A1_L0_L1_P_D_K1),
+        a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1,  A1_L1_L1_P_D_K1),
+        a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1,  A0_L1_L0_P_D_K1),
+        a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1,  A0_L0_L0_P_D_K1),
+        a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L0_L1_P_D_K1),
+        a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1,  A0_L1_L1_P_D_K1),
+      ),1
+   
       
-  
-    ###########################
-    # OBSERVED COMPETING EVENT
-    ###########################
-     d_k1 = case_when(
-        yk == 1 ~ 0,
-        dk == 1 ~ 1,
-        c_k1 == 1 ~ NA,
-        a0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
-        a0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L0_P_D_K1),
-        a0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L1_P_D_K1),
-        a0 == 0 & l1 ==0 ~ rbinom(1, 1, A0_L0_P_D_K1)
-      ),
-    
     ##############################################
     # COUNTERFACTUALS FOR COMPETING EVENT
     ##############################################
@@ -272,21 +294,24 @@ A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
       # consistency 
       yk ==0 & dk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
       # otherwise, have to generate new d_k1 
-      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_D_K1),
-      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_D_K1),
+      # 1 combination for each possible history  (l0 x l1)
+      a0 %in% c(0,1) & l0 == 1 & l1 ==0 ~ rbinom(1,1,   A0_L1_L0_P_D_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A0_L0_L1_P_D_K1),,
+      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A0_L0_L1_P_D_K1),
+      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A0_L1_L1_P_D_K1),
       ),
     
-    # counterfactual under yk = 0, dk = 0, ck=0, A=1 (needed for direct effect )
+    # counterfactual under yk = 0, dk = 0, ck=0, A=1 (needed for direct effect ) 
+    # eliminating possibility of competing event 
     d_k1_Y0_D0_C0_A_1 = case_when(
       # consistency 
       yk ==0 & dk == 0 & a0 == 1 & c_k1 == 0 ~ d_k1,
       # otherwise, have to generate new d_k1 
-      # if a0 == 1 and l0 == 1, simulate as if a0 == 0 and l0 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1, 1, A1_L1_P_D_K1),
-      # if a0 == 1 and l0 == 0, simulate as if a0 == 0 and l0 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_D_K1)
+      # 1 combination for each possible history  (l0 x l1)
+      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A1_L1_L1_P_D_K1),
+      a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A1_L1_L0_P_D_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A1_L0_L1_P_D_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_D_K1)
       ),
     
     # counterfactual under yk = 0, ck=0, a=0 (needed for total effect )
@@ -294,12 +319,9 @@ A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
       # set competing event to 1 if they had a previous event
       dk == 1 ~ 1,
       # consistency 
-      yk ==0 & a0 == 0 & c_k1 == 0 ~ d_k1,
-      # otherwise, need to generate new outcome 
-      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_D_K1),
-      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_D_K1),
+      yk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+      # otherwise, use new the new outcome generated previously 
+      TRUE ~ d_k1_Y0_D0_C0_A_0
       ),
     
     # counterfactual under yk=0, ck=0, a= 1 (needed for total effect )
@@ -308,11 +330,8 @@ A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
       dk == 1 ~ 1,
       # consistency 
       yk ==0 & a0 == 0 & c_k1 == 0 ~ d_k1,
-      # otherwise, need to generate new outcome 
-      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
-      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_D_K1)
+      # otherwise, use new the new outcome generated previously 
+      TRUE ~ d_k1_Y0_D0_C0_A_1
       ),
     
     
@@ -323,10 +342,15 @@ A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
         yk == 1 ~ 1,
         dk == 1 ~ 0,
         c_k1 == 1 ~ NA,
-        a0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_P_Y_K1),
-        a0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L0_P_Y_K1),
-        a0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L1_P_Y_K1),
-        a0 == 0 & l1 ==0 ~ rbinom(1, 1, A0_L0_P_Y_K1)
+        # each combination of treatment x l1 x l0 
+        a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
+        a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A1_L0_L0_P_Y_K1),
+        a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A1_L0_L1_P_Y_K1),
+        a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1),
+        a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A0_L1_L0_P_Y_K1),
+        a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A0_L0_L0_P_Y_K1),
+        a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A0_L0_L1_P_Y_K1),
+        a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A0_L1_L1_P_Y_K1),
       ),
     
     
@@ -339,51 +363,44 @@ A0_L0_P_Y_K1 <- A0_L0_P_Y + .025
       # consistency 
       yk ==0 & d_k1 == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
       # otherwise, have to generate new y_k1 
-      # if a0 == 1 or 0 and l1 == 1, simulate as if a0 == 0 and l1 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_Y_K1),
-      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l1 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_Y_K1),
+      # 1 combination for each possible history  (l0 x l1)
+      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A0_L1_L1_P_Y_K1),
+      a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A0_L1_L0_P_Y_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A0_L0_L1_P_Y_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A0_L0_L0_P_Y_K1)
+      ),
       ),
     
     # counterfactual under y_{k} = 0, d_{k+1} = 0, c_{k+1}=0, A=1 (needed for direct effect)
+    # eliminates possibility of competing event
     y_k1_Y0_D0_C0_A_1 = case_when(
       # consistency 
       yk ==0 & d_k1 == 0 & a0 == 1 & c_k1 == 0 ~ y_k1,
-      # otherwise, have to generate new y_k1 
-      # if a0 == 1 and l1 == 1, simulate as if a0 == 0 and l1 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1, 1, A1_L1_P_Y_K1),
-      # if a0 == 1 and l1 == 0, simulate as if a0 == 0 and l1 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_Y_K1)
+       # otherwise, have to generate new y_k1 
+      # 1 combination for each possible history  (l0 x l1)
+      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A1_L1_L1_P_Y_K1),
+      a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A1_L1_L0_P_Y_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A1_L0_L1_P_Y_K1),
+      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_Y_K1)
       ),
     
     # counterfactual under y_{k} = 0, c_{k+1}=0, A=0 (needed for total effect )
     y_k1_Y0_C0_A_0 = case_when(
-      # set competing event to 1 if they had a previous event
-      yk == 1 ~ 1,
       # we are not eliminating possbility of past competing event
       dk == 1 ~ 0, 
       # consistency 
-      yk ==0 & a0 == 0 & c_k1 == 0 ~ y_k1,
-      # otherwise, need to generate new outcome 
-      # if a0 == 1 or 0 and l1 == 0, simulate as if a0 == 0 and l1== 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A0_L0_P_D_K1),
-      # if a0 == 1 or 0 and l1 == 1, simulate as if a0 == 0 and l1 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A0_L1_P_D_K1),
+      yk == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
+     # otherwise, use new outcome generated
+      TRUE ~ y_k1_Y0_D0_C0_A_0
       ),
 
     # counterfactual under y_{k} = 0, c_{k+1}=0, A=1 (needed for total effect)
     y_k1_Y0_C0_A_1 = case_when(
-      # set competing event to 1 if they had a previous event
-      yk == 1 ~ 1,
       # we are not eliminating possibility of past competing event
       dk == 1 ~ 0, 
       # consistency 
       yk ==0 & a0 == 1 & c_k1 == 0 ~ y_k1,
-      # otherwise, need to generate new outcome 
-      # if a0 == 1 or 0 and l0 == 0, simulate as if a0 == 0 and l0 == 0
-      a0 %in% c(0,1) & l1 == 0 ~ rbinom(1, 1, A1_L0_P_D_K1),
-      # if a0 == 1 or 0 and l0 == 1, simulate as if a0 == 0 and l0 == 1
-      a0 %in% c(0,1) & l1 == 1 ~ rbinom(1,1, A1_L1_P_D_K1),
+      TRUE ~ y_k1_Y0_D0_C0_A_1
       )
      )
  })
@@ -429,3 +446,12 @@ sim_dat %>%
 
 
 True average causal effect
+
+
+
+* Find package to estimate total and direct effect 
+* Restructure data 
+* Compare IPW and G-compare 
+* Make changes to simulation and compare 
+
+
