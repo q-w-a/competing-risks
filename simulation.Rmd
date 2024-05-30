@@ -2,7 +2,10 @@
 title: "Simulation"
 author: "Quinn White"
 date: "`r Sys.Date()`"
-output: html_document
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = "../output")})
 ---
 
 ```{r setup, include=FALSE}
@@ -52,7 +55,15 @@ theme_c <- function(...){
 
 Let $L_k$ be an indicator for having high blood pressure. Let $A$ be the treatment assigment (e.g., an ACE inhibitor).
 
- Since this covariate does not change with time, we have $L_0=L_1=\cdots = L_k$. 
+Direct effect:
+
+\begin{align*}
+\text{Direct effect}&=\Pr[Y_{k+1}^{a=1, \overline{d=0}}=1]- \Pr[Y_{k+1}^{a=0, \overline{d=0}}=1] \\& = 0.5(0.2+0.1) - 0.5(.3+0.25)\\
+&= -0.125
+\end{align*}
+
+Total effect:
+
 
 
 
@@ -410,3 +421,5 @@ sim_dat %>%
 
 ```
 
+
+True average causal effect
