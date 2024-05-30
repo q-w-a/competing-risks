@@ -6,10 +6,16 @@ knit: (function(input, ...) {
     rmarkdown::render(
       input,
       output_dir = "../output")})
+output: 
+  rmdformats::readthedown:
+    code_folding: hide
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(echo = TRUE,message=FALSE, warning=FALSE)
+
 library(tidyverse)
 theme_c <- function(...){ 
    # font <- "Helvetica"   #assign font family up front
