@@ -77,7 +77,7 @@ Total effect:
 
 ```{r}
 
-n <- 1000
+n <- 100000
 
 set.seed(999)
 
@@ -245,7 +245,7 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .1
 ################################
 # ADD TIME POINT Y_{K+1}
 ################################
- sim_dat_updated <- map_df(1:1000, ~{
+ sim_dat_updated <- map_df(1:n, ~{
    
    sim_dat[.x,] %>%
      mutate(l1 = case_when(
@@ -349,7 +349,28 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .1
         a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A0_L0_L1_P_Y_K1),
         a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A0_L1_L1_P_Y_K1),
       ),
+    # set censoring to zero
+    y_k1_A_0 = case_when(
+      yk == 1 ~ 1,
+      dk == 1 ~ 0,
+      # consistency
+      a0 == 0 & c_k1 == 0 ~ yk,
+      a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A0_L1_L0_P_Y_K1),
+      a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A0_L0_L0_P_Y_K1),
+      a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A0_L0_L1_P_Y_K1),
+      a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A0_L1_L1_P_Y_K1)
+    ),
     
+     y_k1_A_1 = case_when(
+      yk == 1 ~ 1,
+      dk == 1 ~ 0,
+      # consistency
+      a0 == 1 & c_k1 == 0 ~ yk,
+      a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
+      a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A1_L0_L0_P_Y_K1),
+      a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A1_L0_L1_P_Y_K1),
+      a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1),
+    ),
     
     ##############################################
     # COUNTERFACTUALS FOR EVENT OF INTEREST 
@@ -400,9 +421,12 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .1
       )
      )
  })
+
+
  
- 
- 
+
+# mean is proportion
+mean(sim_dat_updated$yk_A_1) - mean(sim_dat_updated$yk_A_0)
         
 
 ```
@@ -530,7 +554,8 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     covnames = c('L'),
                     basecovs = c('A'),
                     covtypes=c('binary'),
-                    covparams = list(covmodels = c(L ~ A + lag1_L)),
+                    covparams = list(covlink = c('logit'),
+                                     covmodels = c(L ~ A + lag1_L)),
                     histvars = list(c('L')),
                     histories = c(lagged),
                     # treatment is not time-varying
@@ -541,11 +566,13 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     ymodel =  Y ~ A + L + lag1_L,
                     compevent_model = D ~ A + L + lag1_L,
                     # total effect
-                    compevent_cens = TRUE,
+                    compevent_cens = FALSE,
+                    ref_int=1,
+                   int_descript=c('Never Treat', 'Always Treat'),
                     censor_name = 'C',
-                    censor_model = C ~ lag1_L,
+                    censor_model = C ~ L,
                     intvars = list(c('A'), c('A')),
-                     interventions = list( list(c(static, rep(0, 2))),
+                    interventions = list( list(c(static, rep(0, 2))),
                                           list(c(static, rep(1, 2)))),
                     seed =999
                     )
@@ -567,7 +594,8 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     time_name = 'time_point',
                     covnames = 'L',
                     covtypes='binary',
-                    covparams =  list(covmodels = list(c(L ~ A + lag1_L))),
+                    covparams =  list(covlink = c('logit'),
+                                      covmodels = list(c(L ~ A + lag1_L))),
                     histvars = 'L',
                     histories = 'lagged',
                     # treatment is not time-varying
@@ -665,6 +693,9 @@ EY_A1 <-
   A1_L0_L1_P_Y_K1 * (1-A1_L0_L1_P_D_K1) * (L1_GIVEN_L0_P) * (1-A1_L0_P_Y) * (1-A1_L0_P_D) * 0.5 +
 # L0 = 1, L1 = 0
   A1_L1_L0_P_Y_K1 * (1-A1_L1_L0_P_D_K1) * (1-L1_GIVEN_L1_P) * (1-A1_L1_P_Y) * (1-A1_L1_P_D) * 0.5 
+
+EY_A1 - EY_A0
+
 
 
 EY_A1 - EY_A0
