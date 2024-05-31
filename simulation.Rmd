@@ -94,31 +94,31 @@ baseline <- tibble(
   participant_id = 1:n)
 
 
-A1_L1_P_D <- 0
-A1_L0_P_D <- 0
-A0_L1_P_D <- 0
-A0_L0_P_D <- 0
-
-
-A1_L1_P_Y <- .8
-A1_L0_P_Y <- .8
-A0_L1_P_Y <- .2
-A0_L0_P_Y <- .2
+# A1_L1_P_D <- 0
+# A1_L0_P_D <- 0
+# A0_L1_P_D <- 0
+# A0_L0_P_D <- 0
+# 
+# 
+# A1_L1_P_Y <- .8
+# A1_L0_P_Y <- .8
+# A0_L1_P_Y <- .2
+# A0_L0_P_Y <- .2
 
 ```
 
 ```{r}
 
-# A1_L1_P_D <- .12 
-# A1_L0_P_D <- .05
-# A0_L1_P_D <- .1
-# A0_L0_P_D <- .08
-# 
-# 
-# A1_L1_P_Y <- .2
-# A1_L0_P_Y <- .1
-# A0_L1_P_Y <- .3
-# A0_L0_P_Y <- .25
+A1_L1_P_D <- .12
+A1_L0_P_D <- .05
+A0_L1_P_D <- .1
+A0_L0_P_D <- .08
+
+
+A1_L1_P_Y <- .15
+A1_L0_P_Y <- .1
+A0_L1_P_Y <- .2
+A0_L0_P_Y <- .19
 
 
 
@@ -209,17 +209,17 @@ sim_dat <- map_df(1:n, ~ {
 ##################################
 # EFFECT OF L_0 ON L_1
 ##################################
-L1_GIVEN_L0_P = .5
-L1_GIVEN_L1_P = .5
+L1_GIVEN_L0_P = .2
+L1_GIVEN_L1_P = .6
 
 
 ###############################
 # CENSORING PROBABILITIES
 ###############################
 # probability of censoring if L_1 = 0
-C_K1_GIVEN_L1 = .5
+C_K1_GIVEN_L1 = .05
 # probability of censoring if L_0 = 0
-C_K1_GIVEN_L0 = .5
+C_K1_GIVEN_L0 = .03
 
 
 #################################################
@@ -228,25 +228,25 @@ C_K1_GIVEN_L0 = .5
 #################################################
 # first L is L_0, next is L_1
 # e.g. L1_L0 indicates L_0=1, L_1=0
-# A1_L1_L0_P_D_K1 <- A1_L1_P_D + .04
-# A1_L0_L0_P_D_K1 <- A1_L0_P_D + .02
-# A1_L0_L1_P_D_K1 <- A0_L1_P_D + .06
-# A1_L1_L1_P_D_K1 <- A0_L0_P_D + .03
+A1_L1_L0_P_D_K1 <- A1_L1_P_D + .04
+A1_L0_L0_P_D_K1 <- A1_L0_P_D + .02
+A1_L0_L1_P_D_K1 <- A0_L1_P_D + .06
+A1_L1_L1_P_D_K1 <- A0_L0_P_D + .03
+
+A0_L1_L0_P_D_K1 <- A1_L1_P_D + .02
+A0_L0_L0_P_D_K1 <- A1_L0_P_D + .01
+A0_L0_L1_P_D_K1 <- A0_L1_P_D + .03
+A0_L1_L1_P_D_K1 <- A0_L0_P_D + .05
+
+# A1_L1_L0_P_D_K1 <- A1_L1_P_D #+ .1
+# A1_L0_L0_P_D_K1 <- A1_L0_P_D #+ .1
+# A1_L0_L1_P_D_K1 <- A1_L1_P_D #+ .1 
+# A1_L1_L1_P_D_K1 <- A1_L0_P_D #+ .1
 # 
-# A0_L1_L0_P_D_K1 <- A1_L1_P_D + .02
-# A0_L0_L0_P_D_K1 <- A1_L0_P_D + .01
-# A0_L0_L1_P_D_K1 <- A0_L1_P_D + .03
-# A0_L1_L1_P_D_K1 <- A0_L0_P_D + .05
-
-A1_L1_L0_P_D_K1 <- A1_L1_P_D #+ .1
-A1_L0_L0_P_D_K1 <- A1_L0_P_D #+ .1
-A1_L0_L1_P_D_K1 <- A1_L1_P_D #+ .1 
-A1_L1_L1_P_D_K1 <- A1_L0_P_D #+ .1
-
-A0_L1_L0_P_D_K1 <- A0_L1_P_D #+ .1
-A0_L0_L0_P_D_K1 <- A0_L0_P_D #+ .1
-A0_L0_L1_P_D_K1 <- A0_L1_P_D #+ .1
-A0_L1_L1_P_D_K1 <- A0_L0_P_D #+ .1
+# A0_L1_L0_P_D_K1 <- A0_L1_P_D #+ .1
+# A0_L0_L0_P_D_K1 <- A0_L0_P_D #+ .1
+# A0_L0_L1_P_D_K1 <- A0_L1_P_D #+ .1
+# A0_L1_L1_P_D_K1 <- A0_L0_P_D #+ .1
 
 
 #########################################################
@@ -255,15 +255,15 @@ A0_L1_L1_P_D_K1 <- A0_L0_P_D #+ .1
 #########################################################
 # first L is L_0, next is L_1
 # e.g. L1_L0 indicates L_0=1, L_1=0
-A1_L1_L0_P_Y_K1 <- A1_L1_P_Y 
-A1_L0_L0_P_Y_K1 <- A1_L0_P_Y 
-A1_L0_L1_P_Y_K1 <- A1_L0_P_Y 
-A1_L1_L1_P_Y_K1 <- A1_L1_P_Y 
+A1_L1_L0_P_Y_K1 <- A1_L1_P_Y + .04
+A1_L0_L0_P_Y_K1 <- A1_L0_P_Y + .03
+A1_L0_L1_P_Y_K1 <- A1_L0_P_Y + 0.06
+A1_L1_L1_P_Y_K1 <- A1_L1_P_Y + .08
 
-A0_L1_L0_P_Y_K1 <- A0_L1_P_Y 
-A0_L0_L0_P_Y_K1 <- A0_L0_P_Y 
-A0_L0_L1_P_Y_K1 <- A0_L0_P_Y 
-A0_L1_L1_P_Y_K1 <- A0_L1_P_Y 
+A0_L1_L0_P_Y_K1 <- A0_L1_P_Y + .12
+A0_L0_L0_P_Y_K1 <- A0_L0_P_Y +.1
+A0_L0_L1_P_Y_K1 <- A0_L0_P_Y + .14
+A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .16
 
 
 ################################
@@ -447,11 +447,9 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y
  })
 
 
-# eliminate rows for anyone who already had an event, as they will not 
-# have observations corresponding to these columns
+# eliminate rows for anyone who already had an event at time k
 sim_dat_updated <- sim_dat_updated %>% filter(! (yk ==1 | dk ==1 ))
  
-
 # mean is proportion
 mean(sim_dat_updated$y_k1_A_1, na.rm=TRUE) - mean(sim_dat_updated$y_k1_A_0, na.rm=TRUE)
 
@@ -527,28 +525,28 @@ interventions <- list( list(static, rep(0, 2)),
  ###################
  # TOTAL EFFECT
   ###################
- # result <- gformula(obs_data = sim_dat_formatted,
- #                    id = 'participant_id',
- #                    time_name = 'time_point',
- #                    covnames = c('L'),
- #                    covtypes=c('binary'),
- #                    covparams = list(covmodels = list(c(L ~ A + lag1_L))),
- #                    histvars = list(c('L')),
- #                    histories = c(lagged),
- #                    # treatment is not time-varying
- #                    basecovs = 'A',
- #                    outcome_name = 'Y',
- #                    outcome_type = 'survival',
- #                    compevent_name = 'D',
- #                    ymodel =  c(Y ~ A + L + lag1_L),
- #                    compevent_model = c(D ~ A + L + lag1_L),
- #                    # total effect
- #                    compevent_cens = FALSE,
- #                    censor_name = 'C',
- #                    censor_model = c(C ~ L),
- #                    intvars = list('A', 'A'),
- #                    interventions = list( list(c(static, rep(0, 3))),
- #                                         list(c(static, rep(1, 3)))))
+ result <- gformula(obs_data = sim_dat_formatted,
+                    id = 'participant_id',
+                    time_name = 'time_point',
+                    covnames = c('L'),
+                    covtypes=c('binary'),
+                    covparams = list(covmodels = list(c(L ~ A + lag1_L))),
+                    histvars = list(c('L')),
+                    histories = c(lagged),
+                    # treatment is not time-varying
+                    basecovs = 'A',
+                    outcome_name = 'Y',
+                    outcome_type = 'survival',
+                    compevent_name = 'D',
+                    ymodel =  c(Y ~ A + L + lag1_L),
+                    compevent_model = c(D ~ A + L + lag1_L),
+                    # total effect
+                    compevent_cens = FALSE,
+                    censor_name = 'C',
+                    censor_model = c(C ~ L),
+                    intvars = list('A', 'A'),
+                    interventions = list( list(c(static, rep(0, 3))),
+                                         list(c(static, rep(1, 3)))))
  
  
 # sim_dat_formatted_dt <- data.table::data.table(sim_dat_formatted)
