@@ -531,7 +531,8 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     covnames = c('L'),
                     basecovs = c('A'),
                     covtypes=c('binary'),
-                    covparams = list(covmodels = c(L ~ A + lag1_L)),
+                    covparams = list(covlink = c('logit'),
+                                     covmodels = c(L ~ A + lag1_L)),
                     histvars = list(c('L')),
                     histories = c(lagged),
                     # treatment is not time-varying
@@ -542,9 +543,9 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     ymodel =  Y ~ A + L + lag1_L,
                     compevent_model = D ~ A + L + lag1_L,
                     # total effect
-                    compevent_cens = TRUE,
+                    compevent_cens = FALSE,
                     censor_name = 'C',
-                    censor_model = C ~ lag1_L,
+                    censor_model = C ~ L,
                     intvars = list(c('A'), c('A')),
                      interventions = list( list(c(static, rep(0, 2))),
                                           list(c(static, rep(1, 2)))),
@@ -568,7 +569,8 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     time_name = 'time_point',
                     covnames = 'L',
                     covtypes='binary',
-                    covparams =  list(covmodels = list(c(L ~ A + lag1_L))),
+                    covparams =  list(covlink = c('logit'),
+                                      covmodels = list(c(L ~ A + lag1_L))),
                     histvars = 'L',
                     histories = 'lagged',
                     # treatment is not time-varying
@@ -666,6 +668,9 @@ EY_A1 <-
   A1_L0_L1_P_Y_K1 * (1-A1_L0_L1_P_D_K1) * (L1_GIVEN_L1_P) +
 # L0 = 1, L1 = 0
   A1_L1_L0_P_Y_K1 * (1-A1_L1_L0_P_D_K1) * (1-L1_GIVEN_L1_P) 
+
+EY_A1 - EY_A0
+
 
 
 # ### A = 1
