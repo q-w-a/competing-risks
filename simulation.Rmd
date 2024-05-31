@@ -439,12 +439,11 @@ sim_dat_k_formatted <- sim_dat %>%
    as.data.frame()
  
  
- ```
+```
  
  
  
- 
- ```{r}
+```{r}
  
 histvars <- c('L')
 histories <- c('lagged')
