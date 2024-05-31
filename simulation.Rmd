@@ -253,7 +253,7 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .1
 ################################
 # ADD TIME POINT Y_{K+1}
 ################################
- sim_dat_updated <- map_df(1:2, ~{
+ sim_dat_updated <- map_df(1:1000, ~{
    
    sim_dat[.x,] %>%
      mutate(l1 = case_when(
@@ -388,7 +388,7 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y + .1
       a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_Y_K1)
       ),
     
-    # counterfactual under y_{k} = 0, c_{k+1}=0, A=0 (needed for total effect )
+    # counterfactual under y_{k} = 0, c_{k+1}=0, A=0 (needed for total effect)
     y_k1_Y0_C0_A_0 = case_when(
       # we are not eliminating possbility of past competing event
       dk == 1 ~ 0, 
@@ -429,168 +429,8 @@ sim_dat_k_formatted <- sim_dat %>%
   rename(L = l0,
          A = a0,
          D =dk,
-         Y = yk
-         )
+         Y = yk )
 
-
-
- # sim_dat_updated <- map_df(1:n, ~{
-   
-   sim_dat[.x,] %>%
-     mutate(l1 = case_when(
-       # set to previous value if had either event of interest or competing event
-       dk == 1 | yk == 1 ~ l0,
-       l0 == 0 ~ rbinom(1,1, L1_GIVEN_L0_P),
-       l0 == 1 ~  rbinom(1,1, L1_GIVEN_L1_P)
-       ),
-       
-      c_k1 = case_when(
-        # if we observed either event previously, they are not censored
-        dk == 1 | yk == 1 ~ 0,
-        l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L1),
-        l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L0)
-        ),
-      ############################
-      # OBSERVED COMPETING EVENT
-      ############################
-      d_k1 = case_when(
-        yk == 1 ~ 0,
-        dk == 1 ~ 1,
-        c_k1 == 1 ~ NA,
-        
-        # each combination of treatment x l1 x l0 
-        a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1,  A1_L1_L0_P_D_K1),
-        a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1,  A1_L0_L0_P_D_K1),
-        a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1,  A1_L0_L1_P_D_K1),
-        a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1,  A1_L1_L1_P_D_K1),
-        a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1,  A0_L1_L0_P_D_K1),
-        a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1,  A0_L0_L0_P_D_K1),
-        a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L0_L1_P_D_K1),
-        a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1,  A0_L1_L1_P_D_K1),
-      ),
-   
-      
-    ##############################################
-    # COUNTERFACTUALS FOR COMPETING EVENT
-    ##############################################
-    # useful if we want to calculate effect of treatment on competing event
-    
-    # counterfactual under yk = 0, dk = 0, c_{k+1}=0, A=0 (needed for direct effect )
-    d_k1_Y0_D0_C0_A_0 = case_when(
-      # consistency 
-      yk ==0 & dk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
-      # otherwise, have to generate new d_k1 
-      # 1 combination for each possible history  (l0 x l1)
-      a0 %in% c(0,1) & l0 == 1 & l1 ==0 ~ rbinom(1,1,   A0_L1_L0_P_D_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A0_L0_L1_P_D_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A0_L0_L1_P_D_K1),
-      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A0_L1_L1_P_D_K1),
-      ),
-    
-    # counterfactual under yk = 0, dk = 0, ck=0, A=1 (needed for direct effect ) 
-    # eliminating possibility of competing event 
-    d_k1_Y0_D0_C0_A_1 = case_when(
-      # consistency 
-      yk ==0 & dk == 0 & a0 == 1 & c_k1 == 0 ~ d_k1,
-      # otherwise, have to generate new d_k1 
-      # 1 combination for each possible history  (l0 x l1)
-      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A1_L1_L1_P_D_K1),
-      a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A1_L1_L0_P_D_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A1_L0_L1_P_D_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_D_K1)
-      ),
-    
-    # counterfactual under yk = 0, ck=0, a=0 (needed for total effect )
-    d_k1_Y0_C0_A_0 = case_when(
-      # set competing event to 1 if they had a previous event
-      dk == 1 ~ 1,
-      # consistency 
-      yk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
-      # otherwise, use new the new outcome generated previously 
-      TRUE ~ d_k1_Y0_D0_C0_A_0
-      ),
-    
-    # counterfactual under yk=0, ck=0, a= 1 (needed for total effect )
-    d_k1_Y0_C0_A_1 = case_when(
-      # set competing event to 1 if they had a previous event
-      dk == 1 ~ 1,
-      # consistency 
-      yk ==0 & a0 == 0 & c_k1 == 0 ~ d_k1,
-      # otherwise, use new the new outcome generated previously 
-      TRUE ~ d_k1_Y0_D0_C0_A_1
-      ),
-    
-    
-    ##################################
-    # OBSERVED EVENT OF INTEREST
-    ##################################
-     y_k1 = case_when(
-        yk == 1 ~ 1,
-        dk == 1 ~ 0,
-        c_k1 == 1 ~ NA,
-        # each combination of treatment x l1 x l0 
-        a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
-        a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A1_L0_L0_P_Y_K1),
-        a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A1_L0_L1_P_Y_K1),
-        a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1),
-        a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A0_L1_L0_P_Y_K1),
-        a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A0_L0_L0_P_Y_K1),
-        a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A0_L0_L1_P_Y_K1),
-        a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A0_L1_L1_P_Y_K1),
-      ),
-    
-    
-    ##############################################
-    # COUNTERFACTUALS FOR EVENT OF INTEREST 
-    ##############################################
-
-    # counterfactual under yk = 0, d_{k+1} = 0, c_{k+1}=0, A=0 (needed for direct effect)
-    y_k1_Y0_D0_C0_A_0 = case_when(
-      # consistency 
-      yk ==0 & d_k1 == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
-      # otherwise, have to generate new y_k1 
-      # 1 combination for each possible history  (l0 x l1)
-      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A0_L1_L1_P_Y_K1),
-      a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A0_L1_L0_P_Y_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A0_L0_L1_P_Y_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A0_L0_L0_P_Y_K1)
-      ),
-    
-    # counterfactual under y_{k} = 0, d_{k+1} = 0, c_{k+1}=0, A=1 (needed for direct effect)
-    # eliminates possibility of competing event
-    y_k1_Y0_D0_C0_A_1 = case_when(
-      # consistency 
-      yk ==0 & d_k1 == 0 & a0 == 1 & c_k1 == 0 ~ y_k1,
-       # otherwise, have to generate new y_k1 
-      # 1 combination for each possible history  (l0 x l1)
-      a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A1_L1_L1_P_Y_K1),
-      a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A1_L1_L0_P_Y_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A1_L0_L1_P_Y_K1),
-      a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_Y_K1)
-      ),
-    
-    # counterfactual under y_{k} = 0, c_{k+1}=0, A=0 (needed for total effect )
-    y_k1_Y0_C0_A_0 = case_when(
-      # we are not eliminating possbility of past competing event
-      dk == 1 ~ 0, 
-      # consistency 
-      yk == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
-     # otherwise, use new outcome generated
-      TRUE ~ y_k1_Y0_D0_C0_A_0
-      ),
-
-    # counterfactual under y_{k} = 0, c_{k+1}=0, A=1 (needed for total effect)
-    y_k1_Y0_C0_A_1 = case_when(
-      # we are not eliminating possibility of past competing event
-      dk == 1 ~ 0, 
-      # consistency 
-      yk ==0 & a0 == 1 & c_k1 == 0 ~ y_k1,
-      TRUE ~ y_k1_Y0_D0_C0_A_1
-      )
-     )
- })
-
- 
  sim_dat_k1_formatted <- sim_dat_updated %>% 
    select(c_k1, d_k1, y_k1, participant_id, a0) %>%
    # L_2 is not used in the estimation 
@@ -601,36 +441,163 @@ sim_dat_k_formatted <- sim_dat %>%
           Y = y_k1,
           C= c_k1) 
  
+ sim_dat_formatted <- sim_dat_k_formatted %>% 
+   rbind(sim_dat_k1_formatted) %>%
+   arrange(participant_id, time_point) %>%
+   as.data.frame()
+ 
+ 
+ ```
+ 
+ 
+ 
+ 
+ ```{r}
+ 
 histvars <- c('L')
 histories <- c('lagged')
-covmodels <- c()
-  
- sim_dat_formatted <- sim_dat_k_formatted %>% 
-   rbind(sim_dat_k1_formatted)
+covparams <- list(covmodels = list(c(L ~ A + lag1_L)))
 
+
+basecovs <- c('A')
+  
+ 
+outcome_model <- Y ~ A + L + lag1_L
+compevent_model <- D ~ A + L + lag1_L
+intvars <- c('A', 'A')
+interventions <- list( list(static, rep(0, 2)),
+                       list(static, rep(0, 2))) 
+ 
+
+ ```
+ 
+ 
+
+ ```{r}
  
  library(gfoRmula)
  
  
-ymodel <- Y ~ A + L1 + L2 + lag1_A + lag1_L1 + lag1_L2 + L3 + as.factor(t0)
-compevent_model <- D ~ A + L1 + L2 + lag1_A + lag1_L1 + lag1_L2 + L3 + as.factor(t0)
+ # we obtain total effect when competing event is not treated as a censoring event
+ # (set compevent_cens = FALSE)
+ ###################
+ # TOTAL EFFECT
+  ###################
+ # result <- gformula(obs_data = sim_dat_formatted,
+ #                    id = 'participant_id',
+ #                    time_name = 'time_point',
+ #                    covnames = c('L'),
+ #                    covtypes=c('binary'),
+ #                    covparams = list(covmodels = list(c(L ~ A + lag1_L))),
+ #                    histvars = list(c('L')),
+ #                    histories = c(lagged),
+ #                    # treatment is not time-varying
+ #                    basecovs = 'A',
+ #                    outcome_name = 'Y',
+ #                    outcome_type = 'survival',
+ #                    compevent_name = 'D',
+ #                    ymodel =  c(Y ~ A + L + lag1_L),
+ #                    compevent_model = c(D ~ A + L + lag1_L),
+ #                    # total effect
+ #                    compevent_cens = FALSE,
+ #                    censor_name = 'C',
+ #                    censor_model = c(C ~ L),
+ #                    intvars = list('A', 'A'),
+ #                    interventions = list( list(c(static, rep(0, 3))),
+ #                                         list(c(static, rep(1, 3)))))
  
  
+# sim_dat_formatted_dt <- data.table::data.table(sim_dat_formatted)
+ 
+ 
+ 
+sim_dat_formatted_dt <- sim_dat_formatted %>% 
+  group_by(participant_id) %>%
+  mutate(Y = lead(Y, n=1),
+         D = lead(D, n=1),
+         C = lead(C, n=1)) %>% 
+  filter(time_point != 2) %>% 
+  ungroup() %>%
+  as.data.frame() %>%
+  mutate(Y = ifelse(D == 1, NA, Y)) %>%
+  data.table::data.table()
+ 
+ sim_dat_formatted_dt <- sim_dat_formatted_dt %>%
+   mutate(Y = ifelse(is.na(Y), 0, Y))
+ 
+ 
+ sim_dat_formatted_dt %>%
+   count(A, Y, D,L, time_point, C) |> arrange(Y)
+
+ 
+ sim_dat_formatted_dt %>% cor(use="complete.obs")
+
+result <- gformula(obs_data = sim_dat_formatted_dt,
+                    id = 'participant_id',
+                    time_name = 'time_point',
+                    time_points = 2,
+                    covnames = c('L'),
+                    basecovs = c('A'),
+                    covtypes=c('binary'),
+                    covparams = list(covmodels = c(L ~ A + lag1_L)),
+                    histvars = list(c('L')),
+                    histories = c(lagged),
+                    # treatment is not time-varying
+                    # basecovs = 'A',
+                    outcome_name = 'Y',
+                    outcome_type = 'survival',
+                    compevent_name = 'D',
+                    ymodel =  Y ~ A + L + lag1_L,
+                    compevent_model = D ~ A + L + lag1_L,
+                    # total effect
+                    compevent_cens = TRUE,
+                    censor_name = 'C',
+                    censor_model = C ~ lag1_L,
+                    intvars = list(c('A'), c('A')),
+                     interventions = list( list(c(static, rep(0, 2))),
+                                          list(c(static, rep(1, 2)))),
+                    seed =999
+                    )
+  
+
+  
+  
+ 
+ 
+ 
+ 
+ # we obtain direct effect when competing event is not treated as a censoring event
+ # (set compevent_cens = TRUE)
+ ###################
+ # TOTAL EFFECT
+  ###################
  result <- gformula(obs_data = sim_dat_formatted,
                     id = 'participant_id',
                     time_name = 'time_point',
                     covnames = 'L',
                     covtypes='binary',
+                    covparams =  list(covmodels = list(c(L ~ A + lag1_L))),
+                    histvars = 'L',
+                    histories = 'lagged',
+                    # treatment is not time-varying
+                    basecovs = 'A',
                     outcome_name = 'Y',
                     outcome_type = 'survival',
-                    compevent_name = 'D')
+                    compevent_name = 'D',
+                    ymodel = outcome_model,
+                    compevent_model = D ~ A + L + lag1_L,
+                    # total effect
+                    compevent_cens = FALSE,
+                    intvars = c('A', 'A'),
+                    interventiosn = list( list(static, rep(0, 2)),
+                       list(static, rep(0, 2))))
  
  
 
 ```
 
 
-```{r}
+```{r, eval=FALSE}
         
 
 
