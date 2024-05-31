@@ -100,10 +100,10 @@ A0_L1_P_D <- 0
 A0_L0_P_D <- 0
 
 
-A1_L1_P_Y <- .5
-A1_L0_P_Y <- .5
-A0_L1_P_Y <- .5
-A0_L0_P_Y <- .5
+A1_L1_P_Y <- .8
+A1_L0_P_Y <- .8
+A0_L1_P_Y <- .2
+A0_L0_P_Y <- .2
 
 ```
 
@@ -209,17 +209,17 @@ sim_dat <- map_df(1:n, ~ {
 ##################################
 # EFFECT OF L_0 ON L_1
 ##################################
-L1_GIVEN_L0_P = .2
-L1_GIVEN_L1_P = .8
+L1_GIVEN_L0_P = .5
+L1_GIVEN_L1_P = .5
 
 
 ###############################
 # CENSORING PROBABILITIES
 ###############################
 # probability of censoring if L_1 = 0
-C_K1_GIVEN_L1 = .08
+C_K1_GIVEN_L1 = .5
 # probability of censoring if L_0 = 0
-C_K1_GIVEN_L0 = .04
+C_K1_GIVEN_L0 = .5
 
 
 #################################################
@@ -238,15 +238,15 @@ C_K1_GIVEN_L0 = .04
 # A0_L0_L1_P_D_K1 <- A0_L1_P_D + .03
 # A0_L1_L1_P_D_K1 <- A0_L0_P_D + .05
 
-A1_L1_L0_P_D_K1 <- A1_L1_P_D 
-A1_L0_L0_P_D_K1 <- A1_L0_P_D 
-A1_L0_L1_P_D_K1 <- A0_L1_P_D 
-A1_L1_L1_P_D_K1 <- A0_L0_P_D 
+A1_L1_L0_P_D_K1 <- A1_L1_P_D #+ .1
+A1_L0_L0_P_D_K1 <- A1_L0_P_D #+ .1
+A1_L0_L1_P_D_K1 <- A1_L1_P_D #+ .1 
+A1_L1_L1_P_D_K1 <- A1_L0_P_D #+ .1
 
-A0_L1_L0_P_D_K1 <- A1_L1_P_D 
-A0_L0_L0_P_D_K1 <- A1_L0_P_D 
-A0_L0_L1_P_D_K1 <- A0_L1_P_D 
-A0_L1_L1_P_D_K1 <- A0_L0_P_D 
+A0_L1_L0_P_D_K1 <- A0_L1_P_D #+ .1
+A0_L0_L0_P_D_K1 <- A0_L0_P_D #+ .1
+A0_L0_L1_P_D_K1 <- A0_L1_P_D #+ .1
+A0_L1_L1_P_D_K1 <- A0_L0_P_D #+ .1
 
 
 #########################################################
@@ -257,11 +257,11 @@ A0_L1_L1_P_D_K1 <- A0_L0_P_D
 # e.g. L1_L0 indicates L_0=1, L_1=0
 A1_L1_L0_P_Y_K1 <- A1_L1_P_Y 
 A1_L0_L0_P_Y_K1 <- A1_L0_P_Y 
-A1_L0_L1_P_Y_K1 <- A0_L0_P_Y 
-A1_L1_L1_P_Y_K1 <- A0_L1_P_Y 
+A1_L0_L1_P_Y_K1 <- A1_L0_P_Y 
+A1_L1_L1_P_Y_K1 <- A1_L1_P_Y 
 
-A0_L1_L0_P_Y_K1 <- A1_L1_P_Y 
-A0_L0_L0_P_Y_K1 <- A1_L0_P_Y 
+A0_L1_L0_P_Y_K1 <- A0_L1_P_Y 
+A0_L0_L0_P_Y_K1 <- A0_L0_P_Y 
 A0_L0_L1_P_Y_K1 <- A0_L0_P_Y 
 A0_L1_L1_P_Y_K1 <- A0_L1_P_Y 
 
@@ -274,7 +274,7 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y
    sim_dat[.x,] %>%
      mutate(l1 = case_when(
        # set to previous value if had either event of interest or competing event
-       dk == 1 | yk == 1 ~ l0,
+       #dk == 1 | yk == 1 ~ l0,
        l0 == 0 ~ rbinom(1,1, L1_GIVEN_L0_P),
        l0 == 1 ~  rbinom(1,1, L1_GIVEN_L1_P)
        ),
@@ -360,8 +360,8 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y
     # OBSERVED EVENT OF INTEREST
     ##################################
      y_k1 = case_when(
-        yk == 1 ~ 1,
-        dk == 1 ~ 0,
+       #  yk == 1 ~ 1,
+        # dk == 1 ~ 0,
         c_k1 == 1 ~ NA,
         # each combination of treatment x l1 x l0 
         a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
@@ -393,7 +393,7 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y
       l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
       l0 == 0 & l1 == 0 ~ rbinom(1,1, A1_L0_L0_P_Y_K1),
       l0 == 0 & l1 == 1 ~ rbinom(1,1, A1_L0_L1_P_Y_K1),
-      l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1),
+      l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1)
     ),
     
     ##############################################
@@ -447,11 +447,16 @@ A0_L1_L1_P_Y_K1 <- A0_L1_P_Y
  })
 
 
+# eliminate rows for anyone who already had an event, as they will not 
+# have observations corresponding to these columns
+sim_dat_updated <- sim_dat_updated %>% filter(! (yk ==1 | dk ==1 ))
  
 
 # mean is proportion
 mean(sim_dat_updated$y_k1_A_1, na.rm=TRUE) - mean(sim_dat_updated$y_k1_A_0, na.rm=TRUE)
-        
+
+mean(sim_dat_updated$y_k1_A_1, na.rm=TRUE)
+mean(sim_dat_updated$y_k1_A_0, na.rm=TRUE)
 
 ```
 
@@ -512,7 +517,7 @@ interventions <- list( list(static, rep(0, 2)),
  
  
 
- ```{r}
+```{r}
  
  library(gfoRmula)
  
@@ -720,9 +725,13 @@ EY_A1 <-
 
 EY_A1 - EY_A0
 
+EY_A1
+EY_A0
 
 
-EY_A1 - EY_A0
+```
+
+```{r}
 
 # ### A = 1
 # ## K = 0
