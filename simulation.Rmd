@@ -77,7 +77,7 @@ Total effect:
 
 ```{r}
 
-n <- 100000
+n <- 1000
 
 set.seed(999)
 
@@ -694,6 +694,8 @@ EY_A1 <-
 # L0 = 1, L1 = 0
   A1_L1_L0_P_Y_K1 * (1-A1_L1_L0_P_D_K1) * (1-L1_GIVEN_L1_P) * (1-A1_L1_P_Y) * (1-A1_L1_P_D) * 0.5 
 
+EY_A1
+EY_A0
 EY_A1 - EY_A0
 
 
