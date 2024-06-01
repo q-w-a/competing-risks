@@ -221,7 +221,7 @@ L1_GIVEN_L1_P = .6
 ###############################
 # probability of censoring if L_1 = 0
 C_K1_GIVEN_L1 = .05
-# probability of censoring if L_0 = 0
+# probability of censoring if L_1 = 0
 C_K1_GIVEN_L0 = .03
 
 
