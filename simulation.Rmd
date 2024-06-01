@@ -1190,7 +1190,7 @@ params$A0_L1_L1_P_D_K1 <- params$A0_L1_P_D + 0.02
 
 SAMPLE_SIZES <- c(100, 1000, 10000)
 
-sim_res_scenario_4 <- map(
+sim_res_scenario_3 <- map(
   SAMPLE_SIZES, ~ {
   input_params <- params
   input_params$n <- .x
@@ -1201,14 +1201,14 @@ sim_res_scenario_4 <- map(
 
 TRUE_EFFECT <- do.call(get_true_total_effect, params)
 
-estimated <- map2_df(sim_res_scenario_4,
+estimated <- map2_df(sim_res_scenario_3,
                      SAMPLE_SIZES,
                     ~ {
                       gformula_estimation(.x) %>%
                         mutate(n=.y)
                     })
 
-saveRDS(list(sim_res_scenario_4, estimated), here("results/scenario_4_results"))
+saveRDS(list(sim_res_scenario_3, estimated), here("results/scenario_3_results"))
 
 
 ```
@@ -1276,7 +1276,7 @@ sim_res_scenario_4 <- map(
 
 TRUE_EFFECT <- do.call(get_true_total_effect, params)
 
-estimated <- map2_df(sim_res_scenario_3,
+estimated <- map2_df(sim_res_scenario_4,
                      SAMPLE_SIZES,
                     ~ {
                       gformula_estimation(.x) %>%
