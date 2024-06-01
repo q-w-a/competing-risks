@@ -1025,7 +1025,7 @@ gformula_estimation <- function(dat) {
  
 ## Scenario 1: Total Effect in the Absence of Competing Events
 
-```{r scenario-1, cache=TRUE}
+```{r scenario-1, cache=TRUE, eval=F}
 
 params <- sim_params
 
@@ -1069,7 +1069,7 @@ saveRDS(list(sim_res_scenario_1, estimated), here("results/scenario_1_results"))
 
 ```
 
-```{r plot-scenario-1}
+```{r plot-scenario-1, eval=F}
 
 estimated <- estimated %>% 
   filter(intervention=="Always Treat")
