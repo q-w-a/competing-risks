@@ -459,6 +459,7 @@ mean(sim_dat_updated$y_k1_A_1, na.rm=TRUE) - mean(sim_dat_updated$y_k1_A_0, na.r
 mean(sim_dat_updated$y_k1_A_1, na.rm=TRUE)
 mean(sim_dat_updated$y_k1_A_0, na.rm=TRUE)
 
+
 ```
 
 
@@ -527,6 +528,8 @@ reformat_simulated_data <- function(sim_baseline,
      rbind(sim_dat_2_formatted) %>%
      arrange(participant_id, time_point) %>%
      as.data.frame()
+   
+   return(sim_dat_formatted)
    
   
 }
@@ -924,6 +927,7 @@ simulate_dat <- function(n,
        # eliminate rows for anyone who already had an event at time k
        sim_dat_updated <- sim_dat_updated %>% filter(! (yk ==1 | dk ==1 ))
        
+
        reformatted <- reformat_simulated_data(baseline,sim_dat, sim_dat_updated)
        
        reformatted %>%
@@ -934,6 +938,9 @@ simulate_dat <- function(n,
 
   
 }
+
+# res <- do.call(simulate_dat, params)
+# mean(res$y_k1_A_1, na.rm=TRUE) - mean(res$y_k1_A_0, na.rm=TRUE)
 
 
 
@@ -971,7 +978,7 @@ gformula_estimation <- function(dat) {
                       covnames = c('L'),
                       basecovs = c('A'),
                       covtypes=c('binary'),
-                      nsamples = 500,
+                      nsamples = 200,
                       covparams = list(covlink = c('logit'),
                                        covmodels = c(L ~ A + lag1_L)),
                       histvars = list(c('L')),
@@ -1104,7 +1111,7 @@ params$A0_L0_P_D <- .1
 params$A1_L1_L0_P_D_K1 <- params$A1_L1_P_D + .02
 params$A1_L0_L1_P_D_K1 <- params$A1_L0_P_D + 0.08
 params$A1_L0_L0_P_D_K1 <- params$A1_L0_P_D + 0.08
-params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + 02
+params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + .02
 
 params$A0_L1_L0_P_D_K1 <- params$A0_L1_P_D + 0.02
 params$A0_L0_L1_P_D_K1 <- params$A0_L0_P_D + 0.08
@@ -1150,10 +1157,11 @@ plt_scenario_2 <- estimated %>%
        y = "Total Treatment Effect",
        title = "Competing Event that\nDoes Not Depend on Treatment",
        color="") +
-  theme_c() +
-  scale_y_continuous(limits=c(-.2, -.08)) 
+  theme_c() 
 
 plt_scenario_2
+
+
 ```
 
 
@@ -1173,7 +1181,7 @@ params$A0_L0_P_D <- .4
 params$A1_L1_L0_P_D_K1 <- params$A1_L1_P_D + .02
 params$A1_L0_L1_P_D_K1 <- params$A1_L0_P_D + 0.08
 params$A1_L0_L0_P_D_K1 <- params$A1_L0_P_D + .08
-params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + 02
+params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + .02
 
 params$A0_L1_L0_P_D_K1 <- params$A0_L1_P_D + 0.02
 params$A0_L0_L1_P_D_K1 <- params$A0_L0_P_D + 0.08
@@ -1247,7 +1255,7 @@ params$A0_L0_P_D <- .1
 params$A1_L1_L0_P_D_K1 <- params$A1_L1_P_D + .02
 params$A1_L0_L1_P_D_K1 <- params$A1_L0_P_D + 0.08
 params$A1_L0_L0_P_D_K1 <- params$A1_L0_P_D + .08
-params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + 02
+params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + .02
 
 params$A0_L1_L0_P_D_K1 <- params$A0_L1_P_D + 0.02
 params$A0_L0_L1_P_D_K1 <- params$A0_L0_P_D + 0.08
