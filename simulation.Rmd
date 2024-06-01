@@ -1086,11 +1086,13 @@ plt_scenario_1 <- estimated %>%
        y = "Total Treatment Effect",
        title = "No Competing Event",
        color="") +
-  theme_c() +
-  #scale_y_continuous(limits=c(-.2, -.08)) +
-  geom_errorbar(aes(ymin =ci_lower,ymax=ci_upper))
+  theme_c(legend.text=element_text(size=15)) +
+  geom_errorbar(aes(ymin =ci_lower,ymax=ci_upper), width=.3) +
+  guides(color=guide_legend(override.aes = list(linewidth=1.6)))
 
-plt_scenario_1
+plt_scenario_1 
+
+saveRDS(plt_scenario_1, here("results/plt_scenario_1.RDS"))
 
 ```
 
@@ -1141,7 +1143,7 @@ saveRDS(list(sim_res_scenario_2, estimated), here("results/scenario_2_results"))
 
 ```
 
-```{r}
+```{r plot-scenario-2}
 
 estimated <- estimated %>% 
   filter(intervention=="Always Treat")
@@ -1157,10 +1159,12 @@ plt_scenario_2 <- estimated %>%
        y = "Total Treatment Effect",
        title = "Competing Event that\nDoes Not Depend on Treatment",
        color="") +
+  geom_errorbar(aes(ymin =ci_lower,ymax=ci_upper), width=.3) +
   theme_c() 
 
 plt_scenario_2
 
+saveRDS(plt_scenario_2, here("results/plt_scenario_2.RDS"))
 
 ```
 
@@ -1168,7 +1172,7 @@ plt_scenario_2
 ## Scenario 3: Total Effect in the Presence of a Competing Event for Which Treatment Reduces Risk 
 
 
-```{r}
+```{r scenario-3, cache=TRUE}
 
 params <- sim_params
 
@@ -1214,7 +1218,7 @@ saveRDS(list(sim_res_scenario_3, estimated), here("results/scenario_3_results"))
 ```
 
 
-```{r}
+```{r plot-scenario-3}
 
 estimated <- estimated %>% 
   filter(intervention=="Always Treat")
@@ -1231,9 +1235,13 @@ plt_scenario_3 <- estimated %>%
        title = "Competing Event Where\nTreatment Reduces Risk\nof Competing Event",
        color="") +
   theme_c() +
-  scale_y_continuous(limits=c(-.2, -.08)) 
+  geom_errorbar(aes(ymin=ci_lower,ymax=ci_upper), width=.3)#+
+ # scale_y_continuous(limits=c(-.2, -.08)) 
 
 plt_scenario_3
+
+saveRDS(plt_scenario_3, here("results/plt_scenario_3.RDS"))
+
 
 ```
 
@@ -1241,7 +1249,7 @@ plt_scenario_3
 ## Scenario 4: Total Effect in the Presence of a Competing Event for Which Treatment Increases Risk 
 
 
-```{r}
+```{r scenario-4, cache=TRUE}
 
 
 params <- sim_params
@@ -1290,7 +1298,7 @@ saveRDS(list(sim_res_scenario_4, estimated), here("results/scenario_4_results"))
 
 
 
-```{r}
+```{r plot-scenario-4}
 
 estimated <- estimated %>% 
   filter(intervention=="Always Treat")
@@ -1307,7 +1315,15 @@ plt_scenario_4 <- estimated %>%
        title = "Competing Event Where\nTreatment Increases Risk\nof Competing Event",
        color="") +
   theme_c() +
-  scale_y_continuous(limits=c(-.2, -.08)) 
+  geom_errorbar(aes(ymin = ci_lower, ymax=ci_upper), width=.3)
+
+plt_scenario_4
+# +
+
+saveRDS(plt_scenario_4, here("results/plt_scenario_4.RDS"))
+
+
+  #scale_y_continuous(limits=c(-.2, -.08)) 
 
 
 ```
@@ -1317,7 +1333,12 @@ plt_scenario_4 <- estimated %>%
 # Results
 
 
-```{r}
+```{r plot-4-together, fig.height=8, fig.width=8}
+
+plt_scenario_1 <- readRDS(here("results/plt_scenario_1.RDS"))
+plt_scenario_2 <- readRDS(here("results/plt_scenario_2.RDS"))
+plt_scenario_3 <- readRDS(here("results/plt_scenario_3.RDS"))
+plt_scenario_4 <- readRDS(here("results/plt_scenario_4.RDS"))
 
 library(cowplot)
 
@@ -1327,9 +1348,15 @@ panel_2 <- cowplot::plot_grid(plt_scenario_1 + guides(color="none"),
                               plt_scenario_2 + guides(color="none"), 
                               plt_scenario_3 + guides(color="none"),
                               plt_scenario_4 + guides(color="none"),
-                   nrow=2)
+                   nrow=2,
+                   labels=c("A", "B", "C", "D"))
+
+plot_grid(panel_1, panel_2, nrow=2, rel_heights=c(0.1, .95))
+
+ggsave(here("figure/figure_1.jpeg"))
 
 ```
+
 
  
 ```{r, eval=FALSE}
@@ -1383,8 +1410,6 @@ interventions <- list( list(static, rep(0, 2)),
  
 ```
  
- 
-
 
 ```{r gformula,eval=FALSE}
  
@@ -1522,27 +1547,7 @@ sim_dat %>%
 ```
 
 
-
-
-
-
-
-
-
 ```{r,eval=FALSE}
-
-# SCENARIO 1: NO CENSORING
-
-
-
-
-```
-
-
-
-
-
-```{r}
 
 # for k = 0, l0=1
 
@@ -1607,12 +1612,4 @@ EY_A0
 
 # for k=1
 ```
-
-
-* Find package to estimate total and direct effect 
-* Restructure data 
-* Compare IPW and G-compare 
-* Make changes to simulation and compare 
-
-R package gformula 
 
