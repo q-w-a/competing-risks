@@ -16,7 +16,9 @@ output:
 
 knitr::opts_chunk$set(echo = TRUE,message=FALSE, warning=FALSE)
 
+library(gfoRmula)
 library(tidyverse)
+library(here)
 theme_c <- function(...){ 
    # font <- "Helvetica"   #assign font family up front
   #  font <- "Arial"
@@ -75,7 +77,7 @@ Total effect:
 \end{align*}
 
 
-```{r}
+```{r,eval=FALSE}
 
 n <- 1000
 
@@ -107,7 +109,7 @@ baseline <- tibble(
 
 ```
 
-```{r}
+```{r,eval=FALSE}
 
 A1_L1_P_D <- .12
 A1_L0_P_D <- .05
@@ -211,6 +213,7 @@ sim_dat <- map_df(1:n, ~ {
 ##################################
 L1_GIVEN_L0_P = .2
 L1_GIVEN_L1_P = .6
+
 
 
 ###############################
@@ -459,13 +462,14 @@ mean(sim_dat_updated$y_k1_A_0, na.rm=TRUE)
 ```
 
 
-```{r}
+```{r,eval=FALSE}
 
 ########################################################################
 # REFORMATTING FOR COMPATIBILITY WITH gfoRmula package
 ########################################################################
 
 sim_dat_k_formatted <- sim_dat %>% 
+  mutate(time_point =1) %>%
   select(l0, a0, dk, yk, participant_id, time_point) %>%
   mutate(C=0) %>%
   bind_rows(baseline) %>%
@@ -475,14 +479,13 @@ sim_dat_k_formatted <- sim_dat %>%
          Y = yk )
 
  sim_dat_k1_formatted <- sim_dat_updated %>% 
-   select(c_k1, d_k1, y_k1, participant_id, a0) %>%
-   # L_2 is not used in the estimation 
-   mutate(time_point = 2,
-          L = NA) %>%
+   select(c_k1, d_k1, y_k1, participant_id, a0, l1) %>%
+   mutate(time_point = 2) %>%
    rename(A=a0,
           D=  d_k1,
           Y = y_k1,
-          C= c_k1) 
+          C= c_k1,
+          L=l1) 
  
  sim_dat_formatted <- sim_dat_k_formatted %>% 
    rbind(sim_dat_k1_formatted) %>%
@@ -494,16 +497,841 @@ sim_dat_k_formatted <- sim_dat %>%
  
  
  
+```{r reformat-function}
+
+
+reformat_simulated_data <- function(sim_baseline, 
+                                    sim_dat_1, 
+                                    sim_dat_2) {
+  
+  sim_dat_1_formatted <- sim_dat_1 %>% 
+    mutate(time_point =1) %>%
+    select(l0, a0, dk, yk, participant_id, time_point) %>%
+    mutate(C=0) %>%
+    bind_rows(sim_baseline) %>%
+    rename(L = l0,
+           A = a0,
+           D =dk,
+           Y = yk )
+  
+   sim_dat_2_formatted <- sim_dat_2 %>% 
+     select(c_k1, d_k1, y_k1, participant_id, a0, l1) %>%
+     mutate(time_point = 2) %>%
+     rename(A=a0,
+            D=  d_k1,
+            Y = y_k1,
+            C= c_k1,
+            L=l1) 
+   
+   sim_dat_formatted <- sim_dat_1_formatted %>% 
+     rbind(sim_dat_2_formatted) %>%
+     arrange(participant_id, time_point) %>%
+     as.data.frame()
+   
+  
+}
+
+
+
+```
+
+```{r, get-true-total-effect}
+
+get_true_total_effect <- function(A0_L1_P_Y, A0_L0_P_Y, A1_L1_P_Y, A1_L0_P_Y,
+                                  A0_L1_P_D, A0_L0_P_D, A1_L1_P_D, A1_L0_P_D,
+                                  A0_L0_L0_P_Y_K1, A0_L1_L1_P_Y_K1, A0_L0_L1_P_Y_K1, A0_L1_L0_P_Y_K1,
+                                  A1_L0_L0_P_Y_K1, A1_L1_L1_P_Y_K1, A1_L0_L1_P_Y_K1, A1_L1_L0_P_Y_K1,
+                                  A0_L0_L0_P_D_K1, A0_L1_L1_P_D_K1, A0_L0_L1_P_D_K1, A0_L1_L0_P_D_K1,
+                                  A1_L0_L0_P_D_K1, A1_L1_L1_P_D_K1, A1_L0_L1_P_D_K1, A1_L1_L0_P_D_K1,
+                                  L1_GIVEN_L0_P, L1_GIVEN_L1_P,
+                                  # sample size will be passed but not needed
+                                  ...
+                                  ) {
+  
+    EY_A0 <-  A0_L1_P_Y * (1-A0_L1_P_D) * 0.5 +
+    # L0 = 0
+    A0_L0_P_Y * (1-A0_L0_P_D) * 0.5 +
+    ## K = 1
+    # L0 = 0, L1 = 0
+    A0_L0_L0_P_Y_K1 * (1-A0_L0_L0_P_D_K1) * (1-L1_GIVEN_L0_P) * (1-A0_L0_P_Y) * (1-A0_L0_P_D) * 0.5 +
+    # L0 = 1, L1 = 1
+    A0_L1_L1_P_Y_K1 * (1-A0_L1_L1_P_D_K1) * (L1_GIVEN_L1_P) * (1-A0_L1_P_Y) * (1-A0_L1_P_D) * 0.5 +
+    # L0 = 0, L1 = 1
+    A0_L0_L1_P_Y_K1 * (1-A0_L0_L1_P_D_K1) * (L1_GIVEN_L0_P) * (1-A0_L0_P_Y) * (1-A0_L0_P_D) * 0.5 +
+    # L0 = 1, L1 = 0
+    A0_L1_L0_P_Y_K1 * (1-A0_L1_L0_P_D_K1) * (1-L1_GIVEN_L1_P) * (1-A0_L1_P_Y) * (1-A0_L1_P_D) * 0.5 
+  
+  
+  ### A = 1
+  ## K = 0
+  # L0 = 1
+  EY_A1 <- A1_L1_P_Y * (1-A1_L1_P_D) * 0.5 +
+  # L0 = 0
+    A1_L0_P_Y * (1-A1_L0_P_D) * 0.5 +
+    ## K = 1
+    # L0 = 0, L1 = 0
+    A1_L0_L0_P_Y_K1 * (1-A1_L0_L0_P_D_K1) * (1-L1_GIVEN_L0_P) * (1-A1_L0_P_Y) * (1-A1_L0_P_D) * 0.5 +
+    # L0 = 1, L1 = 1
+    A1_L1_L1_P_Y_K1 * (1-A1_L1_L1_P_D_K1) * (L1_GIVEN_L1_P) * (1-A1_L1_P_Y) * (1-A1_L1_P_D) * 0.5 +
+    # L0 = 0, L1 = 1
+    A1_L0_L1_P_Y_K1 * (1-A1_L0_L1_P_D_K1) * (L1_GIVEN_L0_P) * (1-A1_L0_P_Y) * (1-A1_L0_P_D) * 0.5 +
+    # L0 = 1, L1 = 0
+    A1_L1_L0_P_Y_K1 * (1-A1_L1_L0_P_D_K1) * (1-L1_GIVEN_L1_P) * (1-A1_L1_P_Y) * (1-A1_L1_P_D) * 0.5 
+  
+  tibble(EY_A1 = EY_A1,
+        EY_A0 = EY_A0,
+        total_effect = EY_A1 - EY_A0)
+  
+}
+
+
+
+```
+
+ 
+```{r define-sim-params}
+
+
+sim_params <- list(
+  
+  n = 1000,
+  A1_L1_P_D = .12,
+  A1_L0_P_D  = .05,
+  A0_L1_P_D = .1,
+  A0_L0_P_D  = .08,
+  
+  A1_L1_P_Y = .14,
+  A1_L0_P_Y = .1,
+  A0_L1_P_Y = .2,
+  A0_L0_P_Y = .19,
+  
+  A1_L1_L0_P_Y_K1 = .14 + .03,
+  A1_L0_L0_P_Y_K1 = .1 + .03,
+  A1_L0_L1_P_Y_K1 = .1 + .03,
+  A1_L1_L1_P_Y_K1 = .14 + .03,
+  A0_L1_L0_P_Y_K1 = .2 + .03,
+  A0_L0_L0_P_Y_K1 = .19 + .03,
+  A0_L0_L1_P_Y_K1 = .19 + 0.03,
+  A0_L1_L1_P_Y_K1 = .2 + .03,
+  
+  A1_L1_L0_P_D_K1 = 0.05,
+  A1_L0_L0_P_D_K1 = 0.05,
+  A1_L0_L1_P_D_K1 = 0.05,
+  A1_L1_L1_P_D_K1 = 0.05,
+  A0_L1_L0_P_D_K1 = 0.05,
+  A0_L0_L0_P_D_K1 = 0.05,
+  A0_L0_L1_P_D_K1 = 0.05,
+  A0_L1_L1_P_D_K1 = 0.05,
+  
+  # EFFECT OF L_0 ON L_1
+  L1_GIVEN_L0_P = .2,
+  L1_GIVEN_L1_P = .6,
+  
+  # probability of censoring if L_1 = 0
+  C_K1_GIVEN_L1 = .05,
+  # probability of censoring if L_0 = 0
+  C_K1_GIVEN_L0 = .03
+)
+
+
+
+
+
+
+simulate_dat <- function(n, 
+                         A0_L1_P_Y, A0_L0_P_Y, A1_L1_P_Y, A1_L0_P_Y,
+                         A0_L1_P_D, A0_L0_P_D, A1_L1_P_D, A1_L0_P_D,
+                         A0_L0_L0_P_Y_K1, A0_L1_L1_P_Y_K1, A0_L0_L1_P_Y_K1, A0_L1_L0_P_Y_K1,
+                         A1_L0_L0_P_Y_K1, A1_L1_L1_P_Y_K1, A1_L0_L1_P_Y_K1, A1_L1_L0_P_Y_K1,
+                         A0_L0_L0_P_D_K1, A0_L1_L1_P_D_K1, A0_L0_L1_P_D_K1, A0_L1_L0_P_D_K1,
+                         A1_L0_L0_P_D_K1, A1_L1_L1_P_D_K1, A1_L0_L1_P_D_K1, A1_L1_L0_P_D_K1,
+                         L1_GIVEN_L0_P, L1_GIVEN_L1_P, C_K1_GIVEN_L1, C_K1_GIVEN_L0) {
+  
+  
+
+    baseline <- tibble(
+      # baseline covariates
+      l0 = rbinom(n, 1, .5),
+      # treatment assigment
+      a0 = rbinom(n, 1, .5),
+      yk = 0,
+      dk = 0,
+      time_point = 0,
+      C = 0,
+      participant_id = 1:n)
+  
+  
+  
+      sim_dat <- map_df(1:n, ~ {
+       baseline[.x,] %>%
+         mutate(dk = case_when(
+          a0 == 1 & l0 == 1 ~ rbinom(1,1, A1_L1_P_D),
+          a0 == 1 & l0 == 0 ~ rbinom(1,1, A1_L0_P_D),
+          a0 == 0 & l0 == 1 ~ rbinom(1,1,  A0_L1_P_D),
+          a0 == 0 & l0 ==0 ~ rbinom(1, 1, A0_L0_P_D)
+        ),
+        dk_A_0 = case_when(
+          # consistency 
+          a0 == 0 ~ dk,
+          # if a0 == 1 and l0 == 1, simulate as if a0 == 0 and l0 == 1
+          a0 == 1 & l0 == 1 ~ rbinom(1,1, A0_L1_P_D),
+          # if a0 == 1 and l0 == 0, simulate as if a0 == 0 and l0 == 0
+          a0 == 1 & l0 == 0 ~ rbinom(1, 1, A0_L0_P_D)),
+        dk_A_1 = case_when(
+          # consistency
+          a0 == 1 ~ dk,
+          # if a0 == 0 and l0 == 1, simulate as if a0 == 1 and l0 ==1
+          a0 == 0 & l0 == 1 ~ rbinom(1,1, A1_L1_P_D),
+          # if a0 == 0 and l0 == 0, simulate as if a0 == 1 and l0 ==0
+          a0 == 0 & l0 ==0 ~ rbinom(1,1, A1_L0_P_D)
+        ),
+        yk = case_when(
+          # if they have the competing event, cannot have the event of interest
+          dk == 1 ~ 0, 
+          a0 == 1 & l0 == 1 ~ rbinom(1,1, A1_L1_P_Y),
+          a0 == 1 & l0 == 0 ~ rbinom(1,1, A1_L0_P_Y),
+          a0 ==0 & l0 == 1 ~ rbinom(1,1, A0_L1_P_Y),
+          a0 == 0 & l0 ==0 ~ rbinom(1, 1, A0_L0_P_Y)
+        ),
+        yk_A_0 = case_when(
+           # if they have the competing event, cannot have the event of interest
+          # this remains true when considering a0 == 0
+          dk == 1 ~ 0, 
+          # consistency
+          a0 == 0 ~ yk,
+          # simulate as if they had a0 == 0 and l0 == 1
+          a0 == 1 & l0 == 1 ~ rbinom(1,1,A0_L1_P_Y),
+          # simulate as if they had a0 == 0 and l0 == 0
+          a0 == 1 & l0 == 0 ~ rbinom(1,1, A0_L0_P_Y)
+        ),
+          yk_A_1 = case_when(
+           # if they have the competing event, cannot have the event of interest
+          # this remains true when considering a0 == 0
+          dk == 1 ~ 0, 
+          # consistency
+          a0 == 1 ~ yk,
+          # simulate as if they had a0 == 1 and l0 == 1
+          a0 == 0 & l0 == 1 ~ rbinom(1,1,A1_L1_P_Y),
+          # simulate as if they had a0 == 0 and l0 == 0
+          a0 == 0 & l0 == 0 ~ rbinom(1,1, A1_L0_P_Y)
+        ),
+        yk_A_0_D_0 = case_when(
+          # simulate as if they had no competing event and a0==0
+          # consistency 
+          dk == 0 & a0 == 0 ~ yk,
+          # use previously generated potential outcomes when dk=0
+          dk == 0 & a0 == 1 & l0 == 1 ~ yk_A_0,
+          dk == 0 & a0 == 1 & l0 == 0 ~ yk_A_0,
+          # when dk = 1 generate potential outcomes for these cases 
+          dk == 1 & a0 %in% c(0,1) & l0 == 1 ~ rbinom(1,1, A0_L1_P_Y),
+          dk == 1 & a0 %in% c(0,1) & l0 == 0 ~ rbinom(1,1, A0_L0_P_Y)
+        ),
+        yk_A_1_D_0 = case_when(
+          # simulate as if they had no competing event and a0==1
+          # consistency 
+          dk == 0 & a0 == 1 ~ yk,
+          # use previously generated potential outcomes when dk=0
+          dk == 0 & a0 == 0 & l0 == 1 ~ yk_A_1,
+          dk == 0 & a0 == 0 & l0 == 0 ~ yk_A_1,
+          # when dk = 1 generate potential outcomes for these cases 
+          dk == 1 & a0 %in% c(0,1) & l0 == 1 ~ rbinom(1,1, A1_L1_P_Y),
+          dk == 1 & a0 %in% c(0,1) & l0 == 0 ~ rbinom(1,1, A1_L0_P_Y)
+        )
+        )})
+    
+    
+    
+    ################################
+    # ADD TIME POINT Y_{K+1}
+    ################################
+     sim_dat_updated <- map_df(1:n, ~{
+       
+       sim_dat[.x,] %>%
+         mutate(l1 = case_when(
+           # set to previous value if had either event of interest or competing event
+           #dk == 1 | yk == 1 ~ l0,
+           l0 == 0 ~ rbinom(1,1, L1_GIVEN_L0_P),
+           l0 == 1 ~  rbinom(1,1, L1_GIVEN_L1_P)
+           ),
+           
+          c_k1 = case_when(
+            # if we observed either event previously, they are not censored
+            dk == 1 | yk == 1 ~ 0,
+            l1 == 1 ~ rbinom(1,1, C_K1_GIVEN_L1),
+            l1 == 0 ~ rbinom(1,1, C_K1_GIVEN_L0)
+            ),
+          ############################
+          # OBSERVED COMPETING EVENT
+          ############################
+          d_k1 = case_when(
+            yk == 1 ~ 0,
+            dk == 1 ~ 1,
+            c_k1 == 1 ~ NA,
+            
+            # each combination of treatment x l1 x l0 
+            a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1,  A1_L1_L0_P_D_K1),
+            a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1,  A1_L0_L0_P_D_K1),
+            a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1,  A1_L0_L1_P_D_K1),
+            a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1,  A1_L1_L1_P_D_K1),
+            a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1,  A0_L1_L0_P_D_K1),
+            a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1,  A0_L0_L0_P_D_K1),
+            a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1,  A0_L0_L1_P_D_K1),
+            a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1,  A0_L1_L1_P_D_K1),
+          ),
+       
+          
+        ##############################################
+        # COUNTERFACTUALS FOR COMPETING EVENT
+        ##############################################
+        # useful if we want to calculate effect of treatment on competing event
+        
+        # counterfactual under yk = 0, dk = 0, c_{k+1}=0, A=0 (needed for direct effect )
+        d_k1_Y0_D0_C0_A_0 = case_when(
+          # consistency 
+          yk ==0 & dk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+          # otherwise, have to generate new d_k1 
+          # 1 combination for each possible history  (l0 x l1)
+          a0 %in% c(0,1) & l0 == 1 & l1 ==0 ~ rbinom(1,1,   A0_L1_L0_P_D_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A0_L0_L1_P_D_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A0_L0_L1_P_D_K1),
+          a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A0_L1_L1_P_D_K1),
+          ),
+        
+        # counterfactual under yk = 0, dk = 0, ck=0, A=1 (needed for direct effect ) 
+        # eliminating possibility of competing event 
+        d_k1_Y0_D0_C0_A_1 = case_when(
+          # consistency 
+          yk ==0 & dk == 0 & a0 == 1 & c_k1 == 0 ~ d_k1,
+          # otherwise, have to generate new d_k1 
+          # 1 combination for each possible history  (l0 x l1)
+          a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A1_L1_L1_P_D_K1),
+          a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A1_L1_L0_P_D_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A1_L0_L1_P_D_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_D_K1)
+          ),
+        
+        # counterfactual under yk = 0, ck=0, a=0 (needed for total effect )
+        d_k1_Y0_C0_A_0 = case_when(
+          # set competing event to 1 if they had a previous event
+          dk == 1 ~ 1,
+          # consistency 
+          yk == 0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+          # otherwise, use new the new outcome generated previously 
+          TRUE ~ d_k1_Y0_D0_C0_A_0
+          ),
+        
+        # counterfactual under yk=0, ck=0, a= 1 (needed for total effect )
+        d_k1_Y0_C0_A_1 = case_when(
+          # set competing event to 1 if they had a previous event
+          dk == 1 ~ 1,
+          # consistency 
+          yk ==0 & a0 == 0 & c_k1 == 0 ~ d_k1,
+          # otherwise, use new the new outcome generated previously 
+          TRUE ~ d_k1_Y0_D0_C0_A_1
+          ),
+        
+        
+        ##################################
+        # OBSERVED EVENT OF INTEREST
+        ##################################
+         y_k1 = case_when(
+           #  yk == 1 ~ 1,
+            # dk == 1 ~ 0,
+            c_k1 == 1 ~ NA,
+            # each combination of treatment x l1 x l0 
+            a0 == 1 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
+            a0 == 1 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A1_L0_L0_P_Y_K1),
+            a0 == 1 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A1_L0_L1_P_Y_K1),
+            a0 == 1 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1),
+            a0 == 0 & l0 == 1 & l1 == 0 ~ rbinom(1,1, A0_L1_L0_P_Y_K1),
+            a0 == 0 & l0 == 0 & l1 == 0 ~ rbinom(1,1, A0_L0_L0_P_Y_K1),
+            a0 == 0 & l0 == 0 & l1 == 1 ~ rbinom(1,1, A0_L0_L1_P_Y_K1),
+            a0 == 0 & l0 == 1 & l1 == 1 ~ rbinom(1,1, A0_L1_L1_P_Y_K1),
+          ),
+        # set censoring to zero
+        y_k1_A_0 = case_when(
+          yk == 1 ~ 1,
+          dk == 1  | d_k1 ==1 ~ 0,
+          # consistency
+          a0 == 0 & c_k1 == 0 ~ y_k1,
+          l0 == 1 & l1 == 0 ~ rbinom(1,1, A0_L1_L0_P_Y_K1),
+          l0 == 0 & l1 == 0 ~ rbinom(1,1, A0_L0_L0_P_Y_K1),
+          l0 == 0 & l1 == 1 ~ rbinom(1,1, A0_L0_L1_P_Y_K1),
+          l0 == 1 & l1 == 1 ~ rbinom(1,1, A0_L1_L1_P_Y_K1)
+        ),
+        
+         y_k1_A_1 = case_when(
+          yk == 1 ~ 1,
+          dk == 1 | d_k1 ==1 ~ 0,
+          # consistency
+          a0 == 1 & c_k1 == 0 ~ y_k1,
+          l0 == 1 & l1 == 0 ~ rbinom(1,1, A1_L1_L0_P_Y_K1),
+          l0 == 0 & l1 == 0 ~ rbinom(1,1, A1_L0_L0_P_Y_K1),
+          l0 == 0 & l1 == 1 ~ rbinom(1,1, A1_L0_L1_P_Y_K1),
+          l0 == 1 & l1 == 1 ~ rbinom(1,1, A1_L1_L1_P_Y_K1)
+        ),
+        
+        ##############################################
+        # COUNTERFACTUALS FOR EVENT OF INTEREST 
+        ##############################################
+    
+        # counterfactual under yk = 0, d_{k+1} = 0, c_{k+1}=0, A=0 (needed for direct effect)
+        y_k1_Y0_D0_C0_A_0 = case_when(
+          # consistency 
+          yk ==0 & d_k1 == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
+          # otherwise, have to generate new y_k1 
+          # 1 combination for each possible history  (l0 x l1)
+          a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A0_L1_L1_P_Y_K1),
+          a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A0_L1_L0_P_Y_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A0_L0_L1_P_Y_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A0_L0_L0_P_Y_K1)
+          ),
+        
+        # counterfactual under y_{k} = 0, d_{k+1} = 0, c_{k+1}=0, A=1 (needed for direct effect)
+        # eliminates possibility of competing event
+        y_k1_Y0_D0_C0_A_1 = case_when(
+          # consistency 
+          yk ==0 & d_k1 == 0 & a0 == 1 & c_k1 == 0 ~ y_k1,
+           # otherwise, have to generate new y_k1 
+          # 1 combination for each possible history  (l0 x l1)
+          a0 %in% c(0,1) & l0 == 1 & l1 == 1 ~ rbinom(1, 1, A1_L1_L1_P_Y_K1),
+          a0 %in% c(0,1) & l0 == 1 & l1 == 0 ~ rbinom(1, 1, A1_L1_L0_P_Y_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 1 ~ rbinom(1, 1, A1_L0_L1_P_Y_K1),
+          a0 %in% c(0,1) & l0 == 0 & l1 == 0 ~ rbinom(1, 1, A1_L0_L0_P_Y_K1)
+          ),
+        
+        # counterfactual under y_{k} = 0, c_{k+1}=0, A=0 (needed for total effect)
+        y_k1_Y0_C0_A_0 = case_when(
+          # we are not eliminating possbility of past competing event
+          dk == 1 ~ 0, 
+          # consistency 
+          yk == 0 & a0 == 0 & c_k1 == 0 ~ y_k1,
+         # otherwise, use new outcome generated
+          TRUE ~ y_k1_Y0_D0_C0_A_0
+          ),
+    
+        # counterfactual under y_{k} = 0, c_{k+1}=0, A=1 (needed for total effect)
+        y_k1_Y0_C0_A_1 = case_when(
+          # we are not eliminating possibility of past competing event
+          dk == 1 ~ 0, 
+          # consistency 
+          yk ==0 & a0 == 1 & c_k1 == 0 ~ y_k1,
+          TRUE ~ y_k1_Y0_D0_C0_A_1
+          )
+         )
+     })
+       
+       # eliminate rows for anyone who already had an event at time k
+       sim_dat_updated <- sim_dat_updated %>% filter(! (yk ==1 | dk ==1 ))
+       
+       reformatted <- reformat_simulated_data(baseline,sim_dat, sim_dat_updated)
+       
+       reformatted %>%
+         mutate(n=n)
+       
+       
+    
+
+  
+}
+
+
+
+
+# test <- do.call(simulate_dat, args=sim_params)
+
+
+```
+ 
+ 
+```{r gformula-estimation-function}
+
+
+gformula_estimation <- function(dat) {
+
+  sim_dat_formatted_dt <- dat %>% 
+    group_by(participant_id) %>%
+    mutate(Y = lead(Y, n=1),
+           D = lead(D, n=1),
+           C = lead(C, n=1)) %>% 
+    # when C is NA, this is the final row corresponding to individual;
+    # should be removed
+    filter(!is.na(C)) %>% 
+    ungroup() %>%
+    as.data.frame() %>%
+    # required by the package
+    mutate(Y = ifelse(D == 1, NA, Y)) %>%
+    data.table::data.table()
+  
+  
+  result <- gformula(obs_data = sim_dat_formatted_dt,
+                      id = 'participant_id',
+                      time_name = 'time_point',
+                      time_points = 2,
+                      covnames = c('L'),
+                      basecovs = c('A'),
+                      covtypes=c('binary'),
+                      nsamples = 500,
+                      covparams = list(covlink = c('logit'),
+                                       covmodels = c(L ~ A + lag1_L)),
+                      histvars = list(c('L')),
+                      histories = c(lagged),
+                      # treatment is not time-varying
+                      # basecovs = 'A',
+                      outcome_name = 'Y',
+                      outcome_type = 'survival',
+                      compevent_name = 'D',
+                      ymodel =  Y ~ A + L + lag1_L,
+                      compevent_model = D ~ A + L + lag1_L,
+                      # total effect
+                      compevent_cens = FALSE,
+                      ref_int=1,
+                      int_descript=c('Never Treat', 'Always Treat'),
+                      censor_name = 'C',
+                      censor_model = C ~ L,
+                      intvars = list(c('A'), c('A')),
+                      interventions = list( list(c(static, rep(0, 2))),
+                                            list(c(static, rep(1, 2)))),
+                      seed =999
+                      )
+
+  result$result %>%
+    as_tibble() %>% 
+    filter(k ==1) %>%
+    select(g_form_risk=`g-form risk`, intervention=`Interv.`,
+           risk_difference = `Risk difference`,
+           ci_lower = `RD lower 95% CI`,
+           ci_upper = `RD upper 95% CI`
+           ) %>%
+    mutate(intervention = case_when(
+      intervention == 0 ~ "Natural Course",
+      intervention == 1 ~ "Never Treat",
+      intervention == 2 ~ "Always Treat"))
+  
+  
+}
+
+```
+ 
+ 
+# Treatment Effect is Not Null
+ 
+## Scenario 1: Total Effect in the Absence of Competing Events
+
+```{r scenario-1, cache=TRUE}
+
+params <- sim_params
+
+params$A1_L1_P_D <- 0 
+params$A1_L0_P_D <- 0
+params$A0_L1_P_D <- 0 
+params$A0_L0_P_D <- 0 
+
+params$A1_L1_L0_P_D_K1 <- 0
+params$A1_L0_L1_P_D_K1 <- 0
+params$A1_L0_L0_P_D_K1 <- 0
+params$A1_L1_L1_P_D_K1 <- 0
+
+params$A0_L1_L0_P_D_K1 <- 0
+params$A0_L0_L1_P_D_K1 <- 0
+params$A0_L0_L0_P_D_K1 <- 0
+params$A0_L1_L1_P_D_K1 <- 0
+
+
+SAMPLE_SIZES <- c(100, 1000, 10000)
+
+sim_res_scenario_1 <- map(
+  SAMPLE_SIZES, ~ {
+  input_params <- params
+  input_params$n <- .x
+  do.call(simulate_dat, input_params)
+})
+
+# saveRDS(sim_res_no_competing, here("results/sim_res_no_competing.RDS"))
+
+TRUE_EFFECT <- do.call(get_true_total_effect, params)
+
+estimated <- map2_df(sim_res_scenario_1,
+                     SAMPLE_SIZES,
+                    ~ {
+                      gformula_estimation(.x) %>%
+                        mutate(n=.y)
+                    })
+
+saveRDS(list(sim_res_scenario_1, estimated), here("results/scenario_1_results"))
+
+```
+
+```{r plot-scenario-1}
+
+estimated <- estimated %>% 
+  filter(intervention=="Always Treat")
+
+plt_scenario_1 <- estimated %>%
+  mutate(n=factor(n)) %>%
+  ggplot(aes(x=n, y = risk_difference)) +
+  geom_point(size=2) +
+  geom_hline( linetype=2,
+             aes(color="True Treatment", 
+                 yintercept = TRUE_EFFECT$total_effect),
+             linewidth=1.05) +
+  labs(x="Sample Size",
+       y = "Total Treatment Effect",
+       title = "No Competing Event",
+       color="") +
+  theme_c() +
+  #scale_y_continuous(limits=c(-.2, -.08)) +
+  geom_errorbar(aes(ymin =ci_lower,ymax=ci_upper))
+
+plt_scenario_1
+
+```
+
+ 
+## Scenario 2: Total Effect in the Presence of a Competing Event that Does Not Depend on Treatment 
+
+
+```{r scenario-2,cache=TRUE}
+
+params <- sim_params
+
+# differs slightly by covariates but not treatment 
+params$A1_L1_P_D <- .15 
+params$A1_L0_P_D <- .1
+params$A0_L1_P_D <- .15
+params$A0_L0_P_D <- .1
+
+params$A1_L1_L0_P_D_K1 <- params$A1_L1_P_D + .02
+params$A1_L0_L1_P_D_K1 <- params$A1_L0_P_D + 0.08
+params$A1_L0_L0_P_D_K1 <- params$A1_L0_P_D + 0.08
+params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + 02
+
+params$A0_L1_L0_P_D_K1 <- params$A0_L1_P_D + 0.02
+params$A0_L0_L1_P_D_K1 <- params$A0_L0_P_D + 0.08
+params$A0_L0_L0_P_D_K1 <- params$A0_L0_P_D + 0.08
+params$A0_L1_L1_P_D_K1 <- params$A0_L1_P_D + 0.02
+
+
+SAMPLE_SIZES <- c(100, 1000, 10000)
+
+sim_res_scenario_2 <- map(
+  SAMPLE_SIZES, ~ {
+  input_params <- params
+  input_params$n <- .x
+  do.call(simulate_dat, input_params)
+})
+
+TRUE_EFFECT <- do.call(get_true_total_effect, params)
+
+estimated <- map2_df(sim_res_scenario_2,
+                     SAMPLE_SIZES,
+                    ~ {
+                      gformula_estimation(.x) %>%
+                        mutate(n=.y)
+                    })
+
+saveRDS(list(sim_res_scenario_2, estimated), here("results/scenario_2_results"))
+
+```
+
 ```{r}
+
+estimated <- estimated %>% 
+  filter(intervention=="Always Treat")
+
+plt_scenario_2 <- estimated %>%
+  mutate(n=factor(n)) %>%
+  ggplot(aes(x=n, y = risk_difference)) +
+  geom_point(size=2) +
+  geom_hline( linetype=2,
+             aes(color="True Treatment", yintercept = TRUE_EFFECT$total_effect),
+             linewidth=1.05) +
+  labs(x="Sample Size",
+       y = "Total Treatment Effect",
+       title = "Competing Event that\nDoes Not Depend on Treatment",
+       color="") +
+  theme_c() +
+  scale_y_continuous(limits=c(-.2, -.08)) 
+
+plt_scenario_2
+```
+
+
+## Scenario 3: Total Effect in the Presence of a Competing Event for Which Treatment Reduces Risk 
+
+
+```{r}
+
+params <- sim_params
+
+# differs slightly by covariates but not treatment 
+params$A1_L1_P_D <- .15 
+params$A1_L0_P_D <- .1
+params$A0_L1_P_D <- .45
+params$A0_L0_P_D <- .4
+
+params$A1_L1_L0_P_D_K1 <- params$A1_L1_P_D + .02
+params$A1_L0_L1_P_D_K1 <- params$A1_L0_P_D + 0.08
+params$A1_L0_L0_P_D_K1 <- params$A1_L0_P_D + .08
+params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + 02
+
+params$A0_L1_L0_P_D_K1 <- params$A0_L1_P_D + 0.02
+params$A0_L0_L1_P_D_K1 <- params$A0_L0_P_D + 0.08
+params$A0_L0_L0_P_D_K1 <- params$A0_L0_P_D + 0.08
+params$A0_L1_L1_P_D_K1 <- params$A0_L1_P_D + 0.02
+
+SAMPLE_SIZES <- c(100, 1000, 10000)
+
+sim_res_scenario_4 <- map(
+  SAMPLE_SIZES, ~ {
+  input_params <- params
+  input_params$n <- .x
+  do.call(simulate_dat, input_params)
+})
+
+# saveRDS(sim_res_no_competing, here("results/sim_res_no_competing.RDS"))
+
+TRUE_EFFECT <- do.call(get_true_total_effect, params)
+
+estimated <- map2_df(sim_res_scenario_4,
+                     SAMPLE_SIZES,
+                    ~ {
+                      gformula_estimation(.x) %>%
+                        mutate(n=.y)
+                    })
+
+saveRDS(list(sim_res_scenario_4, estimated), here("results/scenario_4_results"))
+
+
+```
+
+
+```{r}
+
+estimated <- estimated %>% 
+  filter(intervention=="Always Treat")
+
+plt_scenario_3 <- estimated %>%
+  mutate(n=factor(n)) %>%
+  ggplot(aes(x=n, y = risk_difference)) +
+  geom_point(size=2) +
+  geom_hline( linetype=2,
+             aes(color="True Treatment", yintercept = TRUE_EFFECT$total_effect),
+             linewidth=1.05) +
+  labs(x="Sample Size",
+       y = "Total Treatment Effect",
+       title = "Competing Event Where\nTreatment Reduces Risk\nof Competing Event",
+       color="") +
+  theme_c() +
+  scale_y_continuous(limits=c(-.2, -.08)) 
+
+plt_scenario_3
+
+```
+
+ 
+## Scenario 4: Total Effect in the Presence of a Competing Event for Which Treatment Increases Risk 
+
+
+```{r}
+
+
+params <- sim_params
+
+# differs slightly by covariates but not treatment 
+params$A1_L1_P_D <- .45
+params$A1_L0_P_D <- .4
+params$A0_L1_P_D <- .15
+params$A0_L0_P_D <- .1
+
+params$A1_L1_L0_P_D_K1 <- params$A1_L1_P_D + .02
+params$A1_L0_L1_P_D_K1 <- params$A1_L0_P_D + 0.08
+params$A1_L0_L0_P_D_K1 <- params$A1_L0_P_D + .08
+params$A1_L1_L1_P_D_K1 <- params$A1_L1_P_D + 02
+
+params$A0_L1_L0_P_D_K1 <- params$A0_L1_P_D + 0.02
+params$A0_L0_L1_P_D_K1 <- params$A0_L0_P_D + 0.08
+params$A0_L0_L0_P_D_K1 <- params$A0_L0_P_D + 0.08
+params$A0_L1_L1_P_D_K1 <- params$A0_L1_P_D + 0.02
+
+
+SAMPLE_SIZES <- c(100, 1000, 10000)
+
+sim_res_scenario_4 <- map(
+  SAMPLE_SIZES, ~ {
+  input_params <- params
+  input_params$n <- .x
+  do.call(simulate_dat, input_params)
+})
+
+# saveRDS(sim_res_no_competing, here("results/sim_res_no_competing.RDS"))
+
+TRUE_EFFECT <- do.call(get_true_total_effect, params)
+
+estimated <- map2_df(sim_res_scenario_3,
+                     SAMPLE_SIZES,
+                    ~ {
+                      gformula_estimation(.x) %>%
+                        mutate(n=.y)
+                    })
+
+saveRDS(list(sim_res_scenario_4, estimated), here("results/scenario_4_results"))
+
+
+```
+
+
+
+```{r}
+
+estimated <- estimated %>% 
+  filter(intervention=="Always Treat")
+
+plt_scenario_4 <- estimated %>%
+  mutate(n=factor(n)) %>%
+  ggplot(aes(x=n, y = risk_difference)) +
+  geom_point(size=2) +
+  geom_hline( linetype=2,
+             aes(color="True Treatment", yintercept = TRUE_EFFECT$total_effect),
+             linewidth=1.05) +
+  labs(x="Sample Size",
+       y = "Total Treatment Effect",
+       title = "Competing Event Where\nTreatment Increases Risk\nof Competing Event",
+       color="") +
+  theme_c() +
+  scale_y_continuous(limits=c(-.2, -.08)) 
+
+
+```
+
+ 
+ 
+# Results
+
+
+```{r}
+
+library(cowplot)
+
+panel_1 <- get_legend(plt_scenario_1)
+
+panel_2 <- cowplot::plot_grid(plt_scenario_1 + guides(color="none"),
+                              plt_scenario_2 + guides(color="none"), 
+                              plt_scenario_3 + guides(color="none"),
+                              plt_scenario_4 + guides(color="none"),
+                   nrow=2)
+
+```
+
+ 
+```{r, eval=FALSE}
  
 histvars <- c('L')
 histories <- c('lagged')
 covparams <- list(covmodels = list(c(L ~ A + lag1_L)))
 
-
 basecovs <- c('A')
   
- 
 outcome_model <- Y ~ A + L + lag1_L
 compevent_model <- D ~ A + L + lag1_L
 intvars <- c('A', 'A')
@@ -511,15 +1339,12 @@ interventions <- list( list(static, rep(0, 2)),
                        list(static, rep(0, 2))) 
  
 
- ```
+ 
+```
  
  
+```{r,eval=FALSE}
 
-```{r}
- 
- library(gfoRmula)
- 
- 
  # we obtain total effect when competing event is not treated as a censoring event
  # (set compevent_cens = FALSE)
  ###################
@@ -548,31 +1373,37 @@ interventions <- list( list(static, rep(0, 2)),
                     interventions = list( list(c(static, rep(0, 3))),
                                          list(c(static, rep(1, 3)))))
  
+```
  
+ 
+
+
+```{r gformula,eval=FALSE}
+ 
+ library(gfoRmula)
+ 
+
 # sim_dat_formatted_dt <- data.table::data.table(sim_dat_formatted)
  
- 
- 
+
 sim_dat_formatted_dt <- sim_dat_formatted %>% 
   group_by(participant_id) %>%
   mutate(Y = lead(Y, n=1),
          D = lead(D, n=1),
          C = lead(C, n=1)) %>% 
-  filter(time_point != 2) %>% 
+  # when C is NA, this is the final row corresponding to individual;
+  # should be removed
+  filter(!is.na(C)) %>% 
   ungroup() %>%
   as.data.frame() %>%
+  # required by the package
   mutate(Y = ifelse(D == 1, NA, Y)) %>%
   data.table::data.table()
- 
- sim_dat_formatted_dt <- sim_dat_formatted_dt %>%
-   mutate(Y = ifelse(is.na(Y), 0, Y))
- 
  
  sim_dat_formatted_dt %>%
    count(A, Y, D,L, time_point, C) |> arrange(Y)
 
- 
- sim_dat_formatted_dt %>% cor(use="complete.obs")
+# sim_dat_formatted_dt %>% cor(use="complete.obs")
 
 result <- gformula(obs_data = sim_dat_formatted_dt,
                     id = 'participant_id',
@@ -595,7 +1426,7 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     # total effect
                     compevent_cens = FALSE,
                     ref_int=1,
-                   int_descript=c('Never Treat', 'Always Treat'),
+                    int_descript=c('Never Treat', 'Always Treat'),
                     censor_name = 'C',
                     censor_model = C ~ L,
                     intvars = list(c('A'), c('A')),
@@ -604,6 +1435,8 @@ result <- gformula(obs_data = sim_dat_formatted_dt,
                     seed =999
                     )
   
+
+sim_dat_formatted_dt[which(result$IP_weights==0),] %>% glimpse()
 
   
   
@@ -681,9 +1514,28 @@ sim_dat %>%
 ```
 
 
-True average causal effect
+
+
+
+
+
+
+
+```{r,eval=FALSE}
+
+# SCENARIO 1: NO CENSORING
+
+
+
+
+```
+
+
+
+
 
 ```{r}
+
 # for k = 0, l0=1
 
 ### A = 0
