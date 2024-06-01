@@ -1276,7 +1276,7 @@ sim_res_scenario_4 <- map(
 
 TRUE_EFFECT <- do.call(get_true_total_effect, params)
 
-estimated <- map2_df(sim_res_scenario_3,
+estimated <- map2_df(sim_res_scenario_4,
                      SAMPLE_SIZES,
                     ~ {
                       gformula_estimation(.x) %>%
